@@ -14,37 +14,22 @@
   }
 
   const vm = Scratch.vm;
-  const canvas = vm.renderer.canvas;
+  const renderer = vm.renderer;
+  const Cast = Scratch.Cast;
 
-  const THREE = await Scratch.external.importModule("https://cdn.jsdelivr.net/npm/three@latest/build/three.module.min.js");
+  const THREE = await Scratch.external.importModule('https://cdn.jsdelivr.net/npm/three@latest/build/three.module.min.js');
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(75, canvas.width / canvas.height, 0.1, 1000);
-
-  const geometry = new THREE.BoxGeometry( 1, 1, 1 );
-  const material = new THREE.MeshPhongMaterial( { color: 0xffff00 } );
-  const cube = new THREE.Mesh( geometry, material );
-  scene.add( cube );
-
-  let color = 0xFFFFFF;
-  let intensity = 1;
-  let light = new THREE.DirectionalLight(color, intensity);
-  light.position.set(0, 10, 0);
-  light.target.position.set(-5, 0, 0);
-  scene.add(light);
-  scene.add(light.target);
-
-  color = 0xFFFFFF;
-  intensity = 0.5;
-  light = new THREE.AmbientLight(color, intensity);
-  scene.add(light);
-
+  const camera = new THREE.PerspectiveCamera(75, renderer.canvas.width / renderer.canvas.height, 0.1, 1000);
   camera.position.z = 5;
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  scene.add(new THREE.DirectionalLight(0xffffff, 0.5));
 
   let deltaTime = 0;
   let previousTime = 0;
 
-  vm.runtime.on("BEFORE_EXECUTE", () => {
+  vm.runtime.on('BEFORE_EXECUTE', () => {
     const now = performance.now();
 
     if (previousTime === 0) {
@@ -66,7 +51,7 @@
   
       this._renderer = renderer;
   
-      const canvas = document.createElement("canvas");
+      const canvas = document.createElement('canvas');
       this._canvas = canvas;
   
       this.threeRenderer = new THREE.WebGLRenderer({
@@ -88,12 +73,12 @@
       this._nativeSize = renderer.getNativeSize();
       this._boundOnNativeSizeChanged = this.onNativeSizeChanged.bind(this);
       this._rotationCenter = [this._nativeSize[0] / 2, this._nativeSize[1] / 2];
-      renderer.on("NativeSizeChanged", this._boundOnNativeSizeChanged);
+      renderer.on('NativeSizeChanged', this._boundOnNativeSizeChanged);
       this.resizeCanvas();
     }
   
     dispose() {
-      this._renderer.removeListener("NativeSizeChanged", this._boundOnNativeSizeChanged);
+      this._renderer.removeListener('NativeSizeChanged', this._boundOnNativeSizeChanged);
       if (this._texture) this._renderer.gl.deleteTexture(this._texture);
       super.dispose();
     }
@@ -107,8 +92,6 @@
     }
   
     updateContent() {
-      cube.rotation.x += 1 * deltaTime;
-      cube.rotation.y += 1 * deltaTime;
       this.threeRenderer.render(scene, camera);
   
       const gl = this._renderer.gl;
@@ -154,43 +137,57 @@
   } 
 
   // use the drawable order to create a new three drawable between the pen and video layers
-  function createDrawable (renderer) {
-    let videoIndex = renderer._groupOrdering.indexOf("video");
-    const groupName = "threeJSLayer";
+  // It's wrapped in an IIFE for collapsibilitiy 
+  (() => {
+    let videoIndex = renderer._groupOrdering.indexOf('video');
+    const groupName = 'threeJSLayer';
     renderer._groupOrdering.splice(videoIndex + 1, 0, groupName);
     renderer._layerGroups[groupName] = {
       groupIndex: videoIndex + 1,
-      drawListOffset: renderer._layerGroups["video"].drawListOffset
+      drawListOffset: renderer._layerGroups['video'].drawListOffset
     };
-
+  
     renderer._groupOrdering.forEach((name, i) => {
       renderer._layerGroups[name].groupIndex = i;
     });
-
+  
     const skinId = renderer._nextSkinId++;
     const skin = new ThreeSkin(skinId, renderer); // your Three.js skin
     renderer._allSkins[skinId] = skin;
-
+  
     const drawableId = renderer.createDrawable(groupName);
     const drawable = renderer._allDrawables[drawableId];
     renderer.updateDrawableSkinId(drawableId, skinId);
-
+  
     const originalDraw = renderer.draw;
-
+  
     renderer.draw = function() {
       skin.updateContent();
       originalDraw.call(this);
     };
-
+  
     drawable.setHighQuality = function (...args) {
       Object.getPrototypeOf(this).setHighQuality(...args);
       this.skin.resizeCanvas();
-    };
+    }
+  })();
 
-    return skin;
+  const objects = {};
+
+  const geometries = {
+    box: new THREE.BoxGeometry(),
+    sphere: new THREE.SphereGeometry(),
+    cone: new THREE.ConeGeometry(),
+    cylinder: new THREE.CylinderGeometry(),
+    torus: new THREE.TorusGeometry(),
   }
 
-  createDrawable(vm.renderer);
+  const materials = {
+    basic: new THREE.MeshBasicMaterial({ color: 0x00ff00 }),
+    standard: new THREE.MeshStandardMaterial({ color: 0x00ff00 }),
+    lambert: new THREE.MeshLambertMaterial({ color: 0x00ff00 }),
+    phong: new THREE.MeshPhongMaterial({ color: 0x00ff00 }),
+  }
 
   class ThreeJS {
     getInfo() {
@@ -199,16 +196,110 @@
         name: 'ThreeJS',
         blocks: [
           {
-            opcode: 'draw',
+            blockType: 'label',
+            text: Scratch.translate('Objects'),
+          },
+          {
+            opcode: 'createObject',
             blockType: Scratch.BlockType.COMMAND,
-            text: 'draw all',
+            text: Scratch.translate('create object [OBJECT]'),
+            arguments: {
+              OBJECT: {
+                type: Scratch.ArgumentType.STRING,
+                defaultValue: Scratch.translate('object'),
+              }
+            }
+          },
+          {
+            opcode: "deleteObject",
+            blockType: Scratch.BlockType.COMMAND,
+            text: Scratch.translate("delete object [OBJECT]"),
+            arguments: {
+              OBJECT: {
+                type: Scratch.ArgumentType.STRING,
+                defaultValue: Scratch.translate('object'),
+              }
+            }
+          },
+          {
+            blockType: 'label',
+            text: Scratch.translate('Transformations'),
+          },
+          {
+            opcode: "setTransform",
+            blockType: Scratch.BlockType.COMMAND,
+            text: Scratch.translate("set [TRANSFORM] of [OBJECT] to x: [X] y: [Y] z: [Z]"),
+            arguments: {
+              OBJECT: {
+                type: Scratch.ArgumentType.STRING,
+                defaultValue: Scratch.translate('object'),
+              },
+              TRANSFORM: {
+                type: Scratch.ArgumentType.STRING,
+                menu: 'transforms',
+                defaultValue: 'position',
+              },
+              X: {
+                type: Scratch.ArgumentType.NUMBER,
+                defaultValue: 0,
+              },
+              Y: {
+                type: Scratch.ArgumentType.NUMBER,
+                defaultValue: 0,
+              },
+              Z: {
+                type: Scratch.ArgumentType.NUMBER,
+                defaultValue: 0,
+              },
+            },
           },
         ],
+        menus: {
+          transforms: {
+            acceptReporters: true,
+            items: [
+              {
+                text: Scratch.translate('position'),
+                value: 'position',
+              },
+              {
+                text: Scratch.translate('rotation'),
+                value: 'rotation',
+              },
+              {
+                text: Scratch.translate('scale'),
+                value: 'scale',
+              },
+            ],
+          },
+        },
       };
     }
 
-    draw() {
-      // Drawing is handled automatically in the skin's updateContent method
+    createObject({ OBJECT }) {
+      const geometry = geometries.box;
+      const material = materials.standard;
+      const object = new THREE.Mesh(geometry, material);
+      scene.add(object);
+      objects[OBJECT] = object;
+    }
+
+    deleteObject({ OBJECT }) {
+      const object = objects[OBJECT];
+      if (object) {
+        scene.remove(object);
+        delete objects[OBJECT];
+      }
+    }
+
+    setTransform({ OBJECT, TRANSFORM, X, Y, Z }) {
+      (TRANSFORM === 'rotation') ? 
+        objects[OBJECT]?.[TRANSFORM].set(
+          THREE.MathUtils.degToRad(X),
+          THREE.MathUtils.degToRad(Y),
+          THREE.MathUtils.degToRad(Z)
+        )
+      : objects[OBJECT]?.[TRANSFORM].set(X, Y, Z);
     }
 
   }
