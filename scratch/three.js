@@ -17,33 +17,68 @@
 
   const vm = Scratch.vm;
   const renderer = vm.renderer
-  const canvas = renderer.canvas
   const runtime = vm.runtime
 
   const bT = Scratch.BlockType //is this useful?
   const aT = Scratch.ArgumentType
 
-  const extensionId = 'turboThreeD';
-
   //const THREE = await Scratch.external.importModule('https://cdn.jsdelivr.net/npm/three@latest/build/three.module.min.js');
   //const THREE = await Scratch.external.importModule('https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.min.js')
   const THREE = await Scratch.external.importModule("https://esm.sh/three@0.180.0")
 
-const Skin = renderer.exports.Skin;
+const threeRenderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true, alpha: true });
+const threeContext = threeRenderer.getContext()
 
-class SimpleSkin extends Skin {
-  constructor(id, renderer) {
-    super(id, renderer);
+const width = Math.floor(runtime.stageWidth), height = Math.floor(runtime.stageHeight);
+
+const rawBuffer = new ArrayBuffer(width * height * 4);
+const gpuView = new Uint8Array(rawBuffer);
+const clampedView = new Uint8ClampedArray(rawBuffer);
+const renderData = new ImageData(clampedView, width, height);
+
+//like SimpleSkin but modified?
+class ThreeSkin extends renderer.exports.Skin {
+  constructor() {
+    super(renderer._nextSkinId++, renderer);
     const gl = renderer.gl;
-    const texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
+
+    this._texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, this._texture);
+    
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    this._texture = texture;
-    this._rotationCenter = [320, 180];
-    this._size = [640, 360];
+
+    this.updateSize(width,height)
+  }
+
+  getTexture() {
+    return this._texture;
+  }  
+  updateTexture(imageData) {
+    const gl = this._renderer.gl;
+    gl.bindTexture(gl.TEXTURE_2D, this._texture);
+
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, imageData);
+
+    this.emitWasAltered();
+  }
+  updateSize(width, height) {
+    this._size = [width, height];
+    this._rotationCenter = [width / 2, height / 2];
+
+    const gl = this._renderer.gl;
+    gl.bindTexture(gl.TEXTURE_2D, this._texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    
+    this.emitWasAltered();
+  }
+  get size() {
+    return this._size;
+  }
+  get rotationCenter() {
+    return this._rotationCenter;
   }
   dispose() {
     if (this._texture) {
@@ -52,45 +87,13 @@ class SimpleSkin extends Skin {
     }
     super.dispose();
   }
-  set size(value) {
-    this._size = value;
-    this._rotationCenter = [value[0] / 2, value[1] / 2];
-  }
-  get size() {
-    return this._size;
-  }
-  getTexture(scale) {
-    return this._texture || super.getTexture(scale);
-  }
-  setContent(textureData) {
-    const gl = this._renderer.gl;
-    gl.bindTexture(gl.TEXTURE_2D, this._texture);
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      gl.RGBA,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      textureData
-    );
-    this.emitWasAltered();
-  }
 }
+const threeSkin = new ThreeSkin();
 
-let threeSkinId = null;
-let threeSkin = null;
-let threeDrawableId = null;
-
-const threeRenderer = new THREE.WebGLRenderer({ /*preserveDrawingBuffer: true, antialias: false*/ });
-threeRenderer.setClearColor(0x000000, 0);
-threeRenderer.setSize(480, 360);
-
-threeSkinId = renderer._nextSkinId++;
-threeSkin = new SimpleSkin(threeSkinId, renderer);
-renderer._allSkins[threeSkinId] = threeSkin;
-threeDrawableId = renderer.createDrawable("pen");
+renderer._allSkins[threeSkin.id] = threeSkin;
+const threeDrawableId = renderer.createDrawable("pen");
 renderer._allDrawables[threeDrawableId].customDrawableName = "Three Layer";
-renderer.updateDrawableSkinId(threeDrawableId, threeSkinId)
+renderer.updateDrawableSkinId(threeDrawableId, threeSkin.id);
 
 window._ThreeJS_ = {
   THREE: THREE,
@@ -98,64 +101,63 @@ window._ThreeJS_ = {
   get threeRenderer() {return threeRenderer}
 }
 
-  class ThreeJS {
-    getInfo() {
-      return {
-        id: extensionId,
-        name: Scratch.translate('ThreeJS'),
-        color1: '',
-        color2: '',
-        color3: '',
-        blockIconURI: '',
-        menuIconURI: '',
+class ThreeJS {
+  getInfo() {
+    return {
+      id: 'turboJS', //lets do a poll of smth to choose this?
+      name: Scratch.translate('ThreeJS'), //what is the translation of that
+      color1: '',
+      color2: '',
+      color3: '',
+      blockIconURI: '',
+      menuIconURI: '',
 
-        blocks: [
+      blocks: [
 
-          {opcode: 'test', blockType: bT.COMMAND, text: "init a scene", arguments: {}}
+        {opcode: 'test', blockType: bT.COMMAND, text: "init a scene", arguments: {}}
 
-        ],
-        menus: {
+      ],
+      menus: {
 
-        }
-      };
-    }
+      }
+    };
+  }
 
-    async test() {
-const width = runtime.stageWidth, height = runtime.stageHeight;
+  async test() {
 
-const camera = new THREE.PerspectiveCamera( 70, width / height, 0.01, 10 );
-camera.position.z = 5;
+    const camera = new THREE.PerspectiveCamera( 70, width / height, 0.01, 10 );
+    camera.position.z = 5;
 
-const scene = new THREE.Scene();
+    const scene = new THREE.Scene();
 
-const geometry = new THREE.TorusKnotGeometry();
-const material = new THREE.MeshNormalMaterial();
+    const geometry = new THREE.TorusKnotGeometry();
+    const material = new THREE.MeshNormalMaterial();
 
-const mesh = new THREE.Mesh( geometry, material );
-scene.add( mesh );
+    const mesh = new THREE.Mesh( geometry, material );
+    scene.add( mesh );
 
-threeRenderer.setSize( width, height );
-threeSkin.size = [width, height]
-threeRenderer.setAnimationLoop( animate )
+    threeRenderer.setPixelRatio
+    threeRenderer.setSize( width, height );
+    threeSkin.updateSize(width,height);
 
-	threeRenderer.render( scene, camera );
-  await threeSkin.setContent(threeRenderer.domElement)
-  console.log(threeSkin)
+    threeRenderer.setAnimationLoop( animate )
 
-//renderer.addOverlay( threeRenderer.domElement, "manual" ) // change to layered method
+    function animate( time ) {
 
-function animate( time ) {
+      mesh.rotation.x = time / 2000;
+      mesh.rotation.y = time / 1000;
+      mesh.position.z = 2.5 * Math.sin(time / 1000)
 
-	mesh.rotation.x = time / 2000;
-	mesh.rotation.y = time / 1000;
-  mesh.position.z = 3 * Math.sin(time / 1000)
+      threeRenderer.render( scene, camera );
 
-	threeRenderer.render( scene, camera );
-  //how to update?
+      threeContext.readPixels(0, 0, width, height, threeContext.RGBA, threeContext.UNSIGNED_BYTE, gpuView)
+      threeSkin.updateTexture(renderData);
 
-}
+      renderer.dirty = true
     }
 
   }
+
+}
   Scratch.extensions.register(new ThreeJS());
 })(Scratch);
