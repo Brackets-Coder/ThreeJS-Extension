@@ -29,14 +29,14 @@
 const threeRenderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true, alpha: true });
 const threeContext = threeRenderer.getContext()
 
-const width = Math.floor(runtime.stageWidth), height = Math.floor(runtime.stageHeight);
+const width = runtime.stageWidth, height = runtime.stageHeight;
+const pixelScale = 2 //+resolution, -performance (probably)
 
-const rawBuffer = new ArrayBuffer(width * height * 4);
+const rawBuffer = new ArrayBuffer(width*pixelScale * height*pixelScale * 4);
 const gpuView = new Uint8Array(rawBuffer);
 const clampedView = new Uint8ClampedArray(rawBuffer);
-const renderData = new ImageData(clampedView, width, height);
+const renderData = new ImageData(clampedView, width*pixelScale, height*pixelScale);
 
-//like SimpleSkin but modified?
 class ThreeSkin extends renderer.exports.Skin {
   constructor() {
     super(renderer._nextSkinId++, renderer);
@@ -47,38 +47,37 @@ class ThreeSkin extends renderer.exports.Skin {
     
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
-    this.updateSize(width,height)
+    this.updateSize(width,height, pixelScale)
   }
 
   getTexture() {
     return this._texture;
   }  
-  updateTexture(imageData) {
+  updateTexture() {
     const gl = this._renderer.gl;
     gl.bindTexture(gl.TEXTURE_2D, this._texture);
-
-    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, imageData);
+    
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true); //what is this for?
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width*pixelScale, height*pixelScale, gl.RGBA, gl.UNSIGNED_BYTE, renderData);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); //mmmhh
 
     this.emitWasAltered();
   }
-  updateSize(width, height) {
+  updateSize(width, height, pixelScale) {
     this._size = [width, height];
     this._rotationCenter = [width / 2, height / 2];
 
     const gl = this._renderer.gl;
     gl.bindTexture(gl.TEXTURE_2D, this._texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width*pixelScale, height*pixelScale, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
     
     this.emitWasAltered();
   }
   get size() {
     return this._size;
-  }
-  get rotationCenter() {
-    return this._rotationCenter;
   }
   dispose() {
     if (this._texture) {
@@ -94,6 +93,10 @@ renderer._allSkins[threeSkin.id] = threeSkin;
 const threeDrawableId = renderer.createDrawable("pen");
 renderer._allDrawables[threeDrawableId].customDrawableName = "Three Layer";
 renderer.updateDrawableSkinId(threeDrawableId, threeSkin.id);
+
+renderer.markDrawableAsNoninteractive(threeDrawableId)
+
+renderer._allDrawables[threeDrawableId]._highQuality = true
 
 window._ThreeJS_ = {
   THREE: THREE,
@@ -136,9 +139,8 @@ class ThreeJS {
     const mesh = new THREE.Mesh( geometry, material );
     scene.add( mesh );
 
-    threeRenderer.setPixelRatio
-    threeRenderer.setSize( width, height );
-    threeSkin.updateSize(width,height);
+    threeRenderer.setPixelRatio(pixelScale)
+    threeRenderer.setSize( width, height);
 
     threeRenderer.setAnimationLoop( animate )
 
@@ -150,8 +152,9 @@ class ThreeJS {
 
       threeRenderer.render( scene, camera );
 
-      threeContext.readPixels(0, 0, width, height, threeContext.RGBA, threeContext.UNSIGNED_BYTE, gpuView)
-      threeSkin.updateTexture(renderData);
+      threeContext.readPixels(0, 0, width*pixelScale, height*pixelScale, threeContext.RGBA, threeContext.UNSIGNED_BYTE, gpuView)
+      //threeSkin._setTexture(renderData); this is an already existing method in scratch
+      threeSkin.updateTexture() //mine, instead of using texImage2D uses texSubImage2D, they say its faster?
 
       renderer.dirty = true
     }
