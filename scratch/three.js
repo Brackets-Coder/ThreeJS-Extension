@@ -22,7 +22,7 @@
   const bT = Scratch.BlockType //is this useful?
   const aT = Scratch.ArgumentType
   
-  const width = runtime.stageWidth, height = runtime.stageHeight;
+  let width = runtime.stageWidth, height = runtime.stageHeight;
   const pixelScale = 2 //+resolution, -performance (probably)
 
   //const THREE = await Scratch.external.importModule('https://cdn.jsdelivr.net/npm/three@latest/build/three.module.min.js');
@@ -40,10 +40,9 @@
     return { renderer, context}
   }
   const setupSkin = () => {
-    const rawBuffer = new ArrayBuffer(width*pixelScale * height*pixelScale * 4);
-    const gpuView = new Uint8Array(rawBuffer);
-    const clampedView = new Uint8ClampedArray(rawBuffer);
-    const renderData = new ImageData(clampedView, width*pixelScale, height*pixelScale);
+    let rawBuffer = new ArrayBuffer(width*pixelScale * height*pixelScale * 4);
+    let gpuView = new Uint8Array(rawBuffer);
+    let renderData = new ImageData(new Uint8ClampedArray(rawBuffer), width*pixelScale, height*pixelScale);
 
     class ThreeSkin extends renderer.exports.Skin {
       constructor() {
@@ -104,9 +103,6 @@
     renderer.updateDrawableSkinId(threeDrawableId, three.skin.id);
     renderer._allDrawables[threeDrawableId].customDrawableName = "Three Layer";
 
-    //renderer.markDrawableAsNoninteractive(threeDrawableId)
-    //renderer._allDrawables[threeDrawableId]._highQuality = true
-
     return {gpuView, renderData, threeDrawableId}
   }
 
@@ -118,6 +114,23 @@
       THREE: THREE,
       get three() {return three},
     }
+
+    runtime.on('STAGE_SIZE_CHANGED', () => {requestAnimationFrame(() => resize())})
+  }
+
+  function resize() {
+    width = runtime.stageWidth, height = runtime.stageHeight;
+    console.log(width, height)
+
+    //recreate buffers, "texture" dimensions
+    buffers.rawBuffer = new ArrayBuffer(width*pixelScale * height*pixelScale * 4);
+    buffers.gpuView = new Uint8Array(buffers.rawBuffer);
+    buffers.renderData = new ImageData(new Uint8ClampedArray(buffers.rawBuffer), width*pixelScale, height*pixelScale);
+
+    three.renderer.setSize( width, height)
+    three.skin.updateSize(width, height, pixelScale)
+
+    //would update camera aspect too! (future)
   }
 
   Promise.resolve(init())
