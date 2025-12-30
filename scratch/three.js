@@ -16,29 +16,30 @@
   }
 
   const vm = Scratch.vm;
-  const renderer = vm.renderer
-  const runtime = vm.runtime
+  const renderer = vm.renderer;
+  const runtime = vm.runtime;
   
-  const bT = Scratch.BlockType //is this useful?
-  const aT = Scratch.ArgumentType
+  const bT = Scratch.BlockType; //is this useful?
+  const aT = Scratch.ArgumentType;
   
   let width = runtime.stageWidth, height = runtime.stageHeight;
-  const pixelScale = 2 //+resolution, -performance (probably)
+  const pixelScale = 2; //+resolution, -performance (probably)
 
-  //const THREE = await Scratch.external.importModule('https://cdn.jsdelivr.net/npm/three@latest/build/three.module.min.js');
-  //const THREE = await Scratch.external.importModule('https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.min.js')
-  const THREE = await import("https://esm.sh/three@0.180.0")
-  let three, buffers
+  //const THREE = await import('https://cdn.jsdelivr.net/npm/three@latest/build/three.module.min.js');
+  //const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.min.js');
+  const THREE = await import("https://esm.sh/three@0.180.0");
+  let three, buffers, loopId;
+  let scene, camera; //just for now (so the loop has them), can change later to an object or whatever
     
   const setupThree = () => {
-    const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true, alpha: true });
-    const context = renderer.getContext() //is it faster if i define it here?
+    const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true, antialias: false, alpha: true,  });
+    const context = renderer.getContext(); //is it faster if i define it here?
 
-    renderer.setPixelRatio(pixelScale)
-    renderer.setSize( width, height)
+    renderer.setPixelRatio(pixelScale);
+    renderer.setSize( width, height);
 
-    return { renderer, context}
-  }
+    return { renderer, context};
+  };
   const setupSkin = () => {
     let rawBuffer = new ArrayBuffer(width*pixelScale * height*pixelScale * 4);
     let gpuView = new Uint8Array(rawBuffer);
@@ -57,7 +58,7 @@
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
-        this.updateSize(width, height, pixelScale)
+        this.updateSize(width, height, pixelScale);
       }
 
       getTexture() {
@@ -95,7 +96,7 @@
       }
     }
 
-    console.log(three)
+    console.log(three);
 
     three.skin = new ThreeSkin();
     renderer._allSkins[three.skin.id] = three.skin;
@@ -103,38 +104,54 @@
     renderer.updateDrawableSkinId(threeDrawableId, three.skin.id);
     renderer._allDrawables[threeDrawableId].customDrawableName = "Three Layer";
 
-    return {gpuView, renderData, threeDrawableId}
-  }
+    return {gpuView, renderData, threeDrawableId};
+  };
 
   function init() {
-    three = setupThree()
-    buffers = setupSkin()
+    three = setupThree();
+    buffers = setupSkin();
 
     window._ThreeJS_ = {
       THREE: THREE,
-      get three() {return three},
-    }
+      get three() {return three;},
+    };
 
-    runtime.on('STAGE_SIZE_CHANGED', () => {requestAnimationFrame(() => resize())})
+    runtime.on('STAGE_SIZE_CHANGED', () => requestAnimationFrame(() => resize()));
+    runtime.on('PROJECT_START', () => {loopId = requestAnimationFrame(loop);});
+    runtime.on('PROJECT_STOP_ALL', () => {if (loopId) {cancelAnimationFrame(loopId); loopId = null;}});
   }
 
   function resize() {
     width = runtime.stageWidth, height = runtime.stageHeight;
-    console.log(width, height)
+    console.log(width, height);
 
     //recreate buffers, "texture" dimensions
     buffers.rawBuffer = new ArrayBuffer(width*pixelScale * height*pixelScale * 4);
     buffers.gpuView = new Uint8Array(buffers.rawBuffer);
     buffers.renderData = new ImageData(new Uint8ClampedArray(buffers.rawBuffer), width*pixelScale, height*pixelScale);
 
-    three.renderer.setSize( width, height)
-    three.skin.updateSize(width, height, pixelScale)
+    three.renderer.setSize( width, height);
+    three.skin.updateSize(width, height, pixelScale);
 
     //would update camera aspect too! (future)
   }
 
+  const loop = () => {
+
+    loopId = requestAnimationFrame(loop);
+
+    if (camera && scene) {
+      three.renderer.render( scene, camera );
+
+      three.context.readPixels(0, 0, width*pixelScale, height*pixelScale, three.context.RGBA, three.context.UNSIGNED_BYTE, buffers.gpuView);
+      three.skin.updateTexture(buffers.renderData);
+      renderer.dirty = true;
+    }
+    
+  };
+
   Promise.resolve(init())
-  .then(()=>{ console.log("loaded Three Packages? i guess ")
+  .then(()=>{ console.log("loaded Three Packages? i guess ");
 
   class ThreeJS {
     getInfo() {
@@ -160,10 +177,10 @@
 
     test() {
 
-      const camera = new THREE.PerspectiveCamera( 70, width / height, 0.01, 10 );
+      camera = new THREE.PerspectiveCamera( 70, width / height, 0.01, 10 );
       camera.position.z = 5;
 
-      const scene = new THREE.Scene();
+      scene = new THREE.Scene();
 
       const geometry = new THREE.TorusKnotGeometry();
       const material = new THREE.MeshNormalMaterial();
@@ -171,28 +188,11 @@
       const mesh = new THREE.Mesh( geometry, material );
       scene.add( mesh );
 
-      three.renderer.setAnimationLoop( animate )
-
-      function animate( time ) {
-
-        mesh.rotation.x = time / 2000;
-        mesh.rotation.y = time / 1000;
-        mesh.position.z = 2.5 * Math.sin(time / 1000)
-
-        three.renderer.render( scene, camera );
-
-        three.context.readPixels(0, 0, width*pixelScale, height*pixelScale, three.context.RGBA, three.context.UNSIGNED_BYTE, buffers.gpuView)
-        //three.skin._setTexture(renderData); this is an already existing method in scratch
-        three.skin.updateTexture(buffers.renderData) //mine, instead of using texImage2D uses texSubImage2D, they say its faster?
-
-        renderer.dirty = true
-      }
-
     }
 
   }
   Scratch.extensions.register(new ThreeJS());
 
-  }).catch(err => {console.error("error! damm, better luck next time!", err.message)}) //motivation
+  }).catch(err => {console.error("error! damm, better luck next time!", err.message);}); //motivation
 
 })(Scratch);
