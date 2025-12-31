@@ -30,7 +30,7 @@
   const THREE = await import("https://esm.sh/three@0.180.0");
   
   let three, buffers, loopId, clock;
-  let scene, camera, mesh; //just for now (so the loop has them), can change later to an object or whatever
+  let renderingScene, renderingCamera, mesh; //just for now (so the loop has them), can change later to an object or whatever
     
   const setupThree = () => {
     const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true, alpha: true,  });
@@ -138,7 +138,10 @@
     three.renderer.setSize( width, height);
     three.skin.updateSize(width, height, pixelScale);
 
-    //would update camera aspect too! (future)
+    if (renderingCamera) {
+      renderingCamera.aspect = width / height;
+      renderingCamera.updateProjectionMatrix();
+    }
   }
 
   const loop = () => {
@@ -147,13 +150,13 @@
 
     const delta = clock.getDelta();
 
-    if (camera && scene && mesh) {
+    if (renderingCamera && renderingScene && mesh) {
       //animation (delete)
       mesh.rotation.x +=  delta * 2* Math.random();
       mesh.rotation.y +=  delta * 2* Math.random();
       mesh.rotation.z +=  delta * 2* Math.random();
 
-      three.renderer.render( scene, camera );
+      three.renderer.render( renderingScene, renderingCamera );
 
       three.context.readPixels(0, 0, width*pixelScale, height*pixelScale, three.context.RGBA, three.context.UNSIGNED_BYTE, buffers.gpuView);
       three.skin.updateTexture(buffers.renderData);
@@ -183,10 +186,7 @@
 
           '---',
 
-          //{opcode: 'name', blockType: bT.COMMAND, text: 'create [TYPE] named [NAME]', arguments: {TYPE: {type: aT.STRING, menu: 'objectType'}, NAME: {type: aT.STRING, defaultValue: 'object'}}},
-          //{opcode: 'uuid', blockType: bT.REPORTER, text: 'create [TYPE]', arguments: {TYPE: {type: aT.STRING, menu: 'objectType'}}},
-
-          //{opcode: 'uuid', blockType: bT.REPORTER, text: 'create [TYPE] named [NAME]', arguments: {TYPE: {type: aT.STRING, menu: 'objectType'}, NAME: {type: aT.STRING, defaultValue: 'object'}}},
+          {opcode: 'name', blockType: bT.COMMAND, text: 'add to [GROUP] [TYPE] named [NAME]', arguments: {TYPE: {type: aT.STRING, menu: 'objectType'}, NAME: {type: aT.STRING, defaultValue: 'object'}, GROUP: {type: aT.STRING, defaultValue: 'scene'}}},
 
         ],
         menus: {
@@ -198,22 +198,24 @@
 
     test() {
 
-      camera = new THREE.PerspectiveCamera( 70, width / height, 0.01, 10 );
-      camera.position.z = 5;
+      renderingCamera = new THREE.PerspectiveCamera( 70, width / height, 0.01, 10 );
+      renderingCamera.position.z = 5;
 
-      scene = new THREE.Scene();
+      renderingScene = new THREE.Scene();
 
       const geometry = new THREE.TorusKnotGeometry();
       const material = new THREE.MeshNormalMaterial();
 
       mesh = new THREE.Mesh( geometry, material );
-      scene.add( mesh );
+      renderingScene.add( mesh );
 
     }
 
-    uuid(args) {
+    name(args) {
       const obj = new THREE[args.TYPE]();
-      return obj.uuid;
+      obj.name = args.NAME;
+
+      renderingScene.add(obj);
     }
 
     renderer(args) {
