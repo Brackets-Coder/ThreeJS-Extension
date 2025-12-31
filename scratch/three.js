@@ -26,9 +26,8 @@
   let width = runtime.stageWidth, height = runtime.stageHeight;
   const pixelScale = 2; //+resolution, -performance (probably)
 
-  //const THREE = await import('https://cdn.jsdelivr.net/npm/three@latest/build/three.module.min.js');
-  //const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.min.js');
-  const THREE = await import("https://esm.sh/three@0.180.0");
+  const THREE = await import('https://cdn.jsdelivr.net/npm/three@latest/build/three.module.min.js');
+  // const THREE = await import("https://esm.sh/three@0.180.0");
   
   let three, buffers, loopId, clock;
   let renderingScene, renderingCamera, mesh; //just for now (so the loop has them), can change later to an object or whatever
