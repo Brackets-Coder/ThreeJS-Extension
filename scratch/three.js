@@ -1,9 +1,10 @@
 // Name: ThreeJS
 // ID: turboThree
 // Description: Blocks for creating and manipulating 3D objects using the Three.js library. (insert better description here).
-// By: -MasterMath- <https://scratch.mit.edu/users/-MasterMath-/>
 // By: Civero <https://scratch.mit.edu/users/Civero/>
+// By: -MasterMath- <https://scratch.mit.edu/users/-MasterMath-/>
 // By: Drago-Cuven <https://scratch.mit.edu/users/DragoCuven/>
+// By: Astruegenius <https://scratch.mit.edu/users/Astruegenius/>
 // License: MPL-2.0 and MIT
 
 // Started collaboratively 23 December 2025
