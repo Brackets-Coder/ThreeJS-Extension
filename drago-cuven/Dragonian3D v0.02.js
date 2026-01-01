@@ -977,7 +977,6 @@
     constructor() {
       this.scene = null;
       this.showCategory = {
-        base: false,
         motion: false,
         looks: false,
         lighting: false,
@@ -1143,7 +1142,6 @@
           color1: extcolors.Three[0],
           color2: extcolors.Three[1],
           color3: extcolors.Three[2],
-          hideFromPalette: !this.showCategory.base
         },
         {
           opcode: "threeBase_setEnabled",
@@ -1159,7 +1157,6 @@
           color1: extcolors.Three[0],
           color2: extcolors.Three[1],
           color3: extcolors.Three[2],
-          hideFromPalette: !this.showCategory.base
         },
         {
           opcode: "threeBase_getEnabled",
@@ -1168,7 +1165,6 @@
           color1: extcolors.Three[0],
           color2: extcolors.Three[1],
           color3: extcolors.Three[2],
-          hideFromPalette: !this.showCategory.base
         },
         {
           opcode: "threeBase_getView",
@@ -1177,7 +1173,6 @@
           color1: extcolors.Three[0],
           color2: extcolors.Three[1],
           color3: extcolors.Three[2],
-          hideFromPalette: !this.showCategory.base
         },
         {
           opcode: "threeBase_setSkyboxColor",
@@ -1192,7 +1187,6 @@
           color1: extcolors.Three[0],
           color2: extcolors.Three[1],
           color3: extcolors.Three[2],
-          hideFromPalette: !this.showCategory.base
         },
         {
           opcode: "threeBase_getSkyboxColor",
@@ -1201,7 +1195,6 @@
           color1: extcolors.Three[0],
           color2: extcolors.Three[1],
           color3: extcolors.Three[2],
-          hideFromPalette: !this.showCategory.base
         }
       ];
 
@@ -3203,18 +3196,8 @@
       const blocks = [];
       
       blocks.push({
-        opcode: "threeBase_toggleCategory",
-        blockType: BlockType.BUTTON,
-        text: this.showCategory.base ? "Hide Base" : "Show Base",
-        color1: extcolors.Three[0],
-        color2: extcolors.Three[1],
-        color3: extcolors.Three[2],
-        func: "threeBase_toggleCategory"
-      });
-      blocks.push({
         blockType: BlockType.LABEL,
         text: "Base",
-        hideFromPalette: !this.showCategory.base
       });
       blocks.push(...baseBlocks);
 
