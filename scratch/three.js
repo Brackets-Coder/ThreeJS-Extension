@@ -252,7 +252,7 @@
               {
                 opcode: "name",
                 blockType: Scratch.BlockType.COMMAND,
-                text: "add to [GROUP] [TYPE] named [NAME]",
+                text: "add [TYPE] named [NAME] to [GROUP]",
                 arguments: {
                   TYPE: { type: Scratch.ArgumentType.STRING, menu: "objectType" },
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
@@ -262,7 +262,7 @@
             ],
             menus: {
               objectType: { items: ["Mesh", "Sprite", "..."] },
-              rendererProperties: { items: ["autoClear"] },
+              rendererProperties: { items: ["autoClear", "autoClearColor", "autoClearDepth"] },
             },
           };
         }
@@ -290,6 +290,7 @@
           obj.name = args.NAME;
 
           renderingScene.add(obj);
+          //add to a map to keep track,
         }
 
         renderer(args) {
