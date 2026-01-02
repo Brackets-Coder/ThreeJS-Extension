@@ -24,7 +24,8 @@
     height = runtime.stageHeight;
   const pixelScale = 2; //+resolution, -performance (probably)
 
-  const THREE = await Scratch.external.importModule("https://cdn.jsdelivr.net/npm/three@latest/build/three.module.min.js");
+  //const THREE = await Scratch.external.importModule("https://cdn.jsdelivr.net/npm/three@latest/build/three.module.min.js");
+  const THREE = await import("https://cdn.jsdelivr.net/npm/three@latest/build/three.module.min.js");
   // const THREE = await import("https://esm.sh/three@0.180.0");
 
   let three, buffers, loopId, clock;
@@ -264,18 +265,20 @@
                 blockType: Scratch.BlockType.COMMAND,
                 text: "create a camera [NAME] [TYPE]",
                 hideFromPalette: !this.showCategory.test,
+                color1: "#5555bb", //separate categories/folders by colors
                 arguments: {
-                    NAME: { type: Scratch.ArgumentType.STRING },
+                    NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "camera" },
                     TYPE: { type: Scratch.ArgumentType.STRING, menu: "cameraTypes" }
                 }
               },
               {
-                opcode: "setActiveCamera",
+                opcode: "setRenderingCamera",
                 blockType: Scratch.BlockType.COMMAND,
-                text: "active camera [NAME] ",
+                text: "set rendering camera [NAME] ",
                 hideFromPalette: !this.showCategory.test,
+                color1: "#5555bb",
                 arguments: {
-                    NAME: { type: Scratch.ArgumentType.STRING },
+                    NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "camera" },
                 }
               },
               {
@@ -308,7 +311,7 @@
             ],
             menus: {
               objectType: { items: ["Mesh", "Sprite", "..."] },
-              cameraTypes: { items: ["OrthographicCamera", "PerspectiveCamera"] },
+              cameraTypes: { items: ["PerspectiveCamera", "OrthographicCamera"] },
               rendererProperties: { items: ["autoClear", "autoClearColor", "autoClearDepth"] },
             },
           };
@@ -326,17 +329,18 @@
         }
 
         createCamera(args){ // This function will be improved over time - Astruegenius
-            if(args.TYPE === 'OrthographicCamera'){
-                const camera = new THREE.OrthographicCamera( width / - 2, width / 2, height / 2, height / - 2, 1, 1000 );
-                cameras.set(args.NAME, camera);
-            }
-            else{
-                const camera = new THREE.PerspectiveCamera( 70, width / height, 1, 1000 );
-                cameras.set(args.NAME, camera);
-            }
+          let camera;
+          if(args.TYPE === 'OrthographicCamera'){
+            camera = new THREE.OrthographicCamera( width / - 2, width / 2, height / 2, height / - 2, 1, 1000 );
+          }
+          else{
+            camera = new THREE.PerspectiveCamera( 70, width / height, 1, 1000 );
+          }
+          cameras.set(args.NAME, camera);
+          renderingCamera.position.z = 5; // civero: we directly place the camera here. So we can see the center of the scene. Optional.
         }
 
-        setActiveCamera(args){
+        setRenderingCamera(args){
             renderingCamera = cameras.get(args.NAME);
         }
 
@@ -347,7 +351,7 @@
         //    0.01,
         //    10,
         //  );
-          renderingCamera.position.z = 5;
+        //  renderingCamera.position.z = 5;
 
           renderingScene = new THREE.Scene();
 
