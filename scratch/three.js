@@ -31,7 +31,8 @@
   let three, buffers, loopId, clock;
   let renderingScene, renderingCamera, mesh; //just for now (so the loop has them), can change later to an object or whatever
 
-  let cameras = new Map();
+  //let cameras = new Map(); //Cameras are also objects. Why separate them? In a future "transform" block, we can do objects.get(name), and it will work for cameras, lights, meshes...
+  let objects = new Map();
 
   const setupThree = () => {
     const renderer = new THREE.WebGLRenderer({
@@ -336,15 +337,16 @@
           else{
             camera = new THREE.PerspectiveCamera( 70, width / height, 1, 1000 );
           }
-          cameras.set(args.NAME, camera);
+          objects.set(args.NAME, camera);
           camera.position.z = 5; // civero: we directly place the camera here. So we can see the center of the scene. Optional.
         }
 
         setRenderingCamera(args){
-          const selected = cameras.get(args.NAME);
+          const selected = objects.get(args.NAME); //should we make a function getObject(name)? returns the object from objects. Also checks if it exists.
           if (!selected) {
             console.error(`No object named "${args.NAME}"`);
-            return;}
+            return;
+          }
           renderingCamera = selected;
         }
 
