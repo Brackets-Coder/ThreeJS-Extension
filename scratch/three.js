@@ -234,6 +234,7 @@
         constructor () {
           this.showCategory = {
             test: false,
+            objects: false,
           };
         }
 
@@ -299,11 +300,18 @@
                     NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "camera" },
                 }
               },
+
+
+              {
+                blockType: Scratch.BlockType.BUTTON,
+                text: this.showCategory.objects ? Scratch.translate("Hide Object Blocks") : Scratch.translate("Show Object Blocks"),
+                func: "toggleObj",
+              },
               {
                 opcode: "name",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "add [TYPE] named [NAME] to [PARENT]",
-                hideFromPalette: !this.showCategory.test,
+                hideFromPalette: !this.showCategory.objects,
                 color1: "#bb5522",
                 arguments: {
                   TYPE: { type: Scratch.ArgumentType.STRING, menu: "objectType" },
@@ -315,12 +323,13 @@
                 opcode: "objectExists",
                 blockType: Scratch.BlockType.BOOLEAN,
                 text: "object [NAME] exists",
-                hideFromPalette: !this.showCategory.test,
+                hideFromPalette: !this.showCategory.objects,
                 color1: "#bb5522",
                 arguments: {
                     NAME: { type: Scratch.ArgumentType.STRING},
                 }
               },
+
             ],
             menus: {
               objectType: { items: ["Mesh", "Sprite", "..."] },
@@ -402,6 +411,15 @@
         renderer(args) {
           three.renderer[args.PROPERTY] = JSON.parse(args.VALUE); // is there a better way than .parse?
         }
+
+        
+        toggleObj() {
+          this.showCategory.objects = !this.showCategory.objects;
+          if (Scratch.vm.extensionManager) {
+            Scratch.vm.extensionManager.refreshBlocks();
+          }
+        }
+
       }
 
       Scratch.extensions.register(new ThreeJS());
