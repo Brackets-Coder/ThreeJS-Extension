@@ -283,6 +283,16 @@
                 }
               },
               {
+                opcode: "objectExists",
+                blockType: Scratch.BlockType.BOOLEAN,
+                text: "object [NAME] exists",
+                hideFromPalette: !this.showCategory.test,
+                color1: "#5555bb",
+                arguments: {
+                    NAME: { type: Scratch.ArgumentType.STRING},
+                }
+              },
+              {
                 opcode: "test",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "init a scene",
@@ -350,6 +360,11 @@
           renderingCamera = selected;
         }
 
+        objectExists(args){
+          if(objects.get(args.NAME)) return true; 
+          else return false;
+        }
+
         test() {
         //  renderingCamera = new THREE.PerspectiveCamera(      Commented out for testing purposes - Astruegenius
         //    70,
@@ -365,6 +380,7 @@
           const material = new THREE.MeshNormalMaterial();
 
           mesh = new THREE.Mesh(geometry, material);
+          objects.set("test",mesh)
           renderingScene.add(mesh);
         }
 
