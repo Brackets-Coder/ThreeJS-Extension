@@ -280,6 +280,27 @@
                 },
               },
               {
+                opcode: "createMesh",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "create mesh [GEOMETRY] [MATERIAL] [NAME]",
+                hideFromPalette: !this.showCategory.test,
+                arguments: {
+                  GEOMETRY: { type: Scratch.ArgumentType.STRING },
+                  MATERIAL: { type: Scratch.ArgumentType.STRING },
+                  NAME: { type: Scratch.ArgumentType.STRING },
+                },
+              },
+              {
+                opcode: "addObject",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "add object [MESH] name [NAME]",
+                hideFromPalette: !this.showCategory.test,
+                arguments: {
+                  MESH: { type: Scratch.ArgumentType.STRING },
+                  NAME: { type: Scratch.ArgumentType.STRING },
+                },
+              },
+              {
                 opcode: "createCamera",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "create a camera [NAME] [TYPE]",
@@ -348,6 +369,16 @@
           if (Scratch.vm.extensionManager) {
             Scratch.vm.extensionManager.refreshBlocks();
           }
+        }
+
+        createMesh(args){
+          objects.set(args.NAME, new THREE.Mesh(objects.get(GEOMETRY), objects.get(args.MATERIAL)));
+        }
+
+        addObject(args){
+          const mesh = objects.get(args.MESH);
+          objects.set(args.NAME, mesh);
+          renderingScene.add(mesh);
         }
 
         createCamera(args){ // This function will be improved over time - Astruegenius
