@@ -203,9 +203,8 @@
 
     if (renderingCamera && renderingScene && mesh) {
       //animation (delete)
-      mesh.rotation.x += delta * 2 * Math.random();
-      mesh.rotation.y += delta * 2 * Math.random();
-      mesh.rotation.z += delta * 2 * Math.random();
+      mesh.rotation.x += delta * 2;
+      mesh.rotation.y += delta * 2;
 
       three.renderer.render(renderingScene, renderingCamera);
 
@@ -278,6 +277,7 @@
                 opcode: "name",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "add [TYPE] named [NAME] to [GROUP]",
+                hideFromPalette: !this.showCategory.test,
                 arguments: {
                   TYPE: { type: Scratch.ArgumentType.STRING, menu: "objectType" },
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
@@ -314,7 +314,7 @@
 
           renderingScene = new THREE.Scene();
 
-          const geometry = new THREE.TorusKnotGeometry();
+          const geometry = new THREE.BoxGeometry();
           const material = new THREE.MeshNormalMaterial();
 
           mesh = new THREE.Mesh(geometry, material);
@@ -326,7 +326,7 @@
           obj.name = args.NAME;
 
           renderingScene.add(obj);
-          //add to a map to keep track,
+          //add to a map to keep track
         }
 
         renderer(args) {
