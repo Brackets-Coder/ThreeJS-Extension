@@ -337,11 +337,15 @@
             camera = new THREE.PerspectiveCamera( 70, width / height, 1, 1000 );
           }
           cameras.set(args.NAME, camera);
-          renderingCamera.position.z = 5; // civero: we directly place the camera here. So we can see the center of the scene. Optional.
+          camera.position.z = 5; // civero: we directly place the camera here. So we can see the center of the scene. Optional.
         }
 
         setRenderingCamera(args){
-            renderingCamera = cameras.get(args.NAME);
+          const selected = cameras.get(args.NAME);
+          if (!selected) {
+            console.error(`No object named "${args.NAME}"`);
+            return;}
+          renderingCamera = selected;
         }
 
         test() {
