@@ -261,6 +261,23 @@
                 text: this.showCategory.test ? Scratch.translate("Hide Test Blocks") : Scratch.translate("Show Test Blocks"),
                 func: "toggleCore",
               },
+
+              {
+                opcode: "test",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "init a scene",
+                hideFromPalette: !this.showCategory.test,
+              },
+              {
+                opcode: "renderer",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "set renderer [PROPERTY] to [VALUE]",
+                hideFromPalette: !this.showCategory.test,
+                arguments: {
+                  PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "rendererProperties" },
+                  VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "false" },
+                },
+              },
               {
                 opcode: "createCamera",
                 blockType: Scratch.BlockType.COMMAND,
@@ -283,41 +300,26 @@
                 }
               },
               {
+                opcode: "name",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "add [TYPE] named [NAME] to [PARENT]",
+                hideFromPalette: !this.showCategory.test,
+                color1: "#bb5522",
+                arguments: {
+                  TYPE: { type: Scratch.ArgumentType.STRING, menu: "objectType" },
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
+                  PARENT: { type: Scratch.ArgumentType.STRING, defaultValue: "scene" },
+                },
+              },
+              {
                 opcode: "objectExists",
                 blockType: Scratch.BlockType.BOOLEAN,
                 text: "object [NAME] exists",
                 hideFromPalette: !this.showCategory.test,
-                color1: "#5555bb",
+                color1: "#bb5522",
                 arguments: {
                     NAME: { type: Scratch.ArgumentType.STRING},
                 }
-              },
-              {
-                opcode: "test",
-                blockType: Scratch.BlockType.COMMAND,
-                text: "init a scene",
-                hideFromPalette: !this.showCategory.test,
-              },
-              {
-                opcode: "renderer",
-                blockType: Scratch.BlockType.COMMAND,
-                text: "set renderer [PROPERTY] to [VALUE]",
-                hideFromPalette: !this.showCategory.test,
-                arguments: {
-                  PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "rendererProperties" },
-                  VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "false" },
-                },
-              },
-              {
-                opcode: "name",
-                blockType: Scratch.BlockType.COMMAND,
-                text: "add [TYPE] named [NAME] to [GROUP]",
-                hideFromPalette: !this.showCategory.test,
-                arguments: {
-                  TYPE: { type: Scratch.ArgumentType.STRING, menu: "objectType" },
-                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
-                  GROUP: { type: Scratch.ArgumentType.STRING, defaultValue: "scene" },
-                },
               },
             ],
             menus: {
@@ -380,16 +382,21 @@
           const material = new THREE.MeshNormalMaterial();
 
           mesh = new THREE.Mesh(geometry, material);
-          objects.set("test",mesh)
+          objects.set("test", mesh);
           renderingScene.add(mesh);
         }
 
         name(args) {
           const obj = new THREE[args.TYPE]();
-          obj.name = args.NAME;
 
-          renderingScene.add(obj);
-          //add to a map to keep track
+          objects.set(args.NAME, obj);
+          const parent = objects.get(args.PARENT);
+          if (!parent) {
+            console.error(`No object named "${args.NAME}". Adding to scene.`);
+            renderingScene.add(obj);
+            return;
+          }
+          parent.add(obj);
         }
 
         renderer(args) {
