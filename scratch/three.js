@@ -291,16 +291,6 @@
                 },
               },
               {
-                opcode: "addObject",
-                blockType: Scratch.BlockType.COMMAND,
-                text: "add object [MESH] name [NAME]",
-                hideFromPalette: !this.showCategory.test,
-                arguments: {
-                  MESH: { type: Scratch.ArgumentType.STRING },
-                  NAME: { type: Scratch.ArgumentType.STRING },
-                },
-              },
-              {
                 opcode: "createCamera",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "create a camera [NAME] [TYPE]",
@@ -329,13 +319,14 @@
                 func: "toggleObj",
               },
               {
-                opcode: "name",
+                opcode: "addObject",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "add [TYPE] named [NAME] to [PARENT]",
                 hideFromPalette: !this.showCategory.objects,
                 color1: "#bb5522",
                 arguments: {
                   TYPE: { type: Scratch.ArgumentType.STRING, menu: "objectType" },
+                  INFO: { type: Scratch.ArgumentType.STRING, defaultValue: "object data name" },
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
                   PARENT: { type: Scratch.ArgumentType.STRING, defaultValue: "scene" },
                 },
