@@ -30,6 +30,8 @@
   let three, buffers, loopId, clock;
   let renderingScene, renderingCamera, mesh; //just for now (so the loop has them), can change later to an object or whatever
 
+  let cameras = new Map();
+
   const setupThree = () => {
     const renderer = new THREE.WebGLRenderer({
       preserveDrawingBuffer: true,
@@ -258,6 +260,25 @@
                 func: "toggleCore",
               },
               {
+                opcode: "createCamera",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "create a camera [NAME] [TYPE]",
+                hideFromPalette: !this.showCategory.test,
+                arguments: {
+                    NAME: { type: Scratch.ArgumentType.STRING },
+                    TYPE: { type: Scratch.ArgumentType.STRING, menu: "cameraTypes" }
+                }
+              },
+              {
+                opcode: "setActiveCamera",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "active camera [NAME] ",
+                hideFromPalette: !this.showCategory.test,
+                arguments: {
+                    NAME: { type: Scratch.ArgumentType.STRING },
+                }
+              },
+              {
                 opcode: "test",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "init a scene",
@@ -287,6 +308,7 @@
             ],
             menus: {
               objectType: { items: ["Mesh", "Sprite", "..."] },
+              cameraTypes: { items: ["OrthographicCamera", "PerspectiveCamera"] },
               rendererProperties: { items: ["autoClear", "autoClearColor", "autoClearDepth"] },
             },
           };
@@ -303,13 +325,28 @@
           }
         }
 
+        createCamera(args){ // This function will be improved over time - Astruegenius
+            if(args.TYPE === 'OrthographicCamera'){
+                const camera = new THREE.OrthographicCamera( width / - 2, width / 2, height / 2, height / - 2, 1, 1000 );
+                cameras.set(args.NAME, camera);
+            }
+            else{
+                const camera = new THREE.PerspectiveCamera( 70, width / height, 1, 1000 );
+                cameras.set(args.NAME, camera);
+            }
+        }
+
+        setActiveCamera(args){
+            renderingCamera = cameras.get(args.NAME);
+        }
+
         test() {
-          renderingCamera = new THREE.PerspectiveCamera(
-            70,
-            width / height,
-            0.01,
-            10,
-          );
+        //  renderingCamera = new THREE.PerspectiveCamera(      Commented out for testing purposes - Astruegenius
+        //    70,
+        //    width / height,
+        //    0.01,
+        //    10,
+        //  );
           renderingCamera.position.z = 5;
 
           renderingScene = new THREE.Scene();
