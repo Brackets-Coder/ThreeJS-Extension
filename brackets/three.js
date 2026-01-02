@@ -17,7 +17,7 @@
   const renderer = vm.renderer;
   const Cast = Scratch.Cast;
 
-  const THREE = await Scratch.external.importModule('https://cdn.jsdelivr.net/npm/three@latest/build/three.module.min.js');
+  const THREE = await import('https://cdn.jsdelivr.net/npm/three@latest/build/three.module.min.js');
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(75, renderer.canvas.width / renderer.canvas.height, 0.1, 1000);
