@@ -321,7 +321,7 @@
               {
                 opcode: "addObject",
                 blockType: Scratch.BlockType.COMMAND,
-                text: "add [TYPE] named [NAME] to [PARENT]",
+                text: "add [TYPE] [INFO] named [NAME] to [PARENT]",
                 hideFromPalette: !this.showCategory.objects,
                 color1: "#bb5522",
                 arguments: {
