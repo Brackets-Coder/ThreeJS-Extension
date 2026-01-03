@@ -190,7 +190,7 @@
     Scratch.vm.renderer.setUseHighQualityRender = function(state) {
       originalHQP.call(Scratch.vm.renderer, state);
       
-      console.log("HQP toggled!", pixelScale);
+      console.log("HQP toggled!");
     };
 
     //* Why are we calling a function that hasn't been defined yet? - Brackets
