@@ -223,7 +223,7 @@
       renderer.dirty = true;
     }
 
-    const canvas = `${renderer.canvas.width}x${renderer.canvas.height} and ${window.devicePixelRatio}`;
+    const canvas = `${renderer.canvas.width}x${renderer.canvas.height}`;
 
     if (lastCanvas !== canvas) {
       lastCanvas = canvas;
@@ -242,6 +242,12 @@
           this.showCategory = {
             test: false,
             objects: false,
+            camera: false,
+          };
+          this.reset = () => {
+            if (Scratch.vm.extensionManager) {
+              Scratch.vm.extensionManager.refreshBlocks();
+            }
           };
         }
 
@@ -297,28 +303,6 @@
                   NAME: { type: Scratch.ArgumentType.STRING },
                 },
               },
-              {
-                opcode: "createCamera",
-                blockType: Scratch.BlockType.COMMAND,
-                text: "create a camera [NAME] [TYPE]",
-                hideFromPalette: !this.showCategory.test,
-                color1: "#5555bb", //separate categories/folders by colors
-                arguments: {
-                    NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "camera" },
-                    TYPE: { type: Scratch.ArgumentType.STRING, menu: "cameraTypes" }
-                }
-              },
-              {
-                opcode: "setRenderingCamera",
-                blockType: Scratch.BlockType.COMMAND,
-                text: "set rendering camera [NAME] ",
-                hideFromPalette: !this.showCategory.test,
-                color1: "#5555bb",
-                arguments: {
-                    NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "camera" },
-                }
-              },
-
 
               {
                 blockType: Scratch.BlockType.BUTTON,
@@ -348,6 +332,23 @@
                     NAME: { type: Scratch.ArgumentType.STRING},
                 }
               },
+              {
+                blockType: Scratch.BlockType.BUTTON,
+                text: this.showCategory.camera ? Scratch.translate("Hide Camera Blocks") : Scratch.translate("Show Camera Blocks"),
+                func: "toggleCam",
+                hideFromPalette: !this.showCategory.objects
+              },
+              {
+                opcode: "setRenderingCamera",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "set rendering camera [NAME] ",
+                hideFromPalette: !this.showCategory.camera,
+                color1: "#5555bb",
+                arguments: {
+                    NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "camera" },
+                }
+              },
+
 
             ],
             menus: {
@@ -358,26 +359,31 @@
           };
         }
 
-        placeholder() {
-
-        }
+        placeholder() {}
 
         toggleCore() {
           this.showCategory.test = !this.showCategory.test;
-          if (Scratch.vm.extensionManager) {
-            Scratch.vm.extensionManager.refreshBlocks();
-          }
+          this.reset();
+        }
+        toggleObj() {
+          this.showCategory.objects = !this.showCategory.objects;
+          this.showCategory.camera = false;
+          this.reset();
+        }
+        toggleCam() {
+          this.showCategory.camera = !this.showCategory.camera;
+          this.reset();
         }
 
         createMesh(args){
           objects.set(args.NAME, new THREE.Mesh(objects.get(GEOMETRY), objects.get(args.MATERIAL)));
         }
-
+        /*
         addObject(args){
           const mesh = objects.get(args.MESH);
           objects.set(args.NAME, mesh);
           renderingScene.add(mesh);
-        }
+        }*/
 
         createCamera(args){ // This function will be improved over time - Astruegenius
           let camera;
@@ -421,11 +427,20 @@
 
           mesh = new THREE.Mesh(geometry, material);
           objects.set("test", mesh);
+          mesh.position.z = -10;
           renderingScene.add(mesh);
         }
 
-        name(args) {
+        addObject(args) {
           const obj = new THREE[args.TYPE]();
+
+          switch (args.TYPE) {
+            case "PerspectiveCamera": 
+              obj.aspect = width/height;
+              obj.updateProjectionMatrix();
+              break;
+            
+          }
 
           objects.set(args.NAME, obj);
           const parent = objects.get(args.PARENT);
@@ -441,13 +456,6 @@
           three.renderer[args.PROPERTY] = JSON.parse(args.VALUE); // is there a better way than .parse?
         }
 
-        
-        toggleObj() {
-          this.showCategory.objects = !this.showCategory.objects;
-          if (Scratch.vm.extensionManager) {
-            Scratch.vm.extensionManager.refreshBlocks();
-          }
-        }
 
       }
 
