@@ -29,7 +29,7 @@
 
   let three, loopId, clock;
   let rawBuffer, gpuView, renderData;
-  let renderingScene, renderingCamera, mesh; //just for now (so the loop has them), can change later to an object or whatever
+  let scene, camera, mesh; //just for now (so the loop has them), can change later to an object or whatever
 
   let objects = new Map();
 
@@ -109,9 +109,9 @@
           height
         );
 
-        if (renderingCamera) {
-          renderingCamera.aspect = width / height;
-          renderingCamera.updateProjectionMatrix();
+        if (camera) {
+          camera.aspect = width / height;
+          camera.updateProjectionMatrix();
         }
 
         const gl = this._renderer.gl;
@@ -193,8 +193,6 @@
       console.log("HQP toggled!");
     };
 
-    //* Why are we calling a function that hasn't been defined yet? - Brackets
-    //init is called when loading the extension blocks. so it's executed after. - Civero!
     loop(); //autostart? Not working every the time... why?
   }
 
@@ -203,12 +201,12 @@
 
     const delta = clock.getDelta();
 
-    if (renderingCamera && renderingScene && mesh) {
+    if (camera && scene && mesh) {
       //animation (delete)
       mesh.rotation.x += delta * 2;
       mesh.rotation.y += delta * 2;
 
-      three.renderer.render(renderingScene, renderingCamera);
+      three.renderer.render(scene, camera);
 
       three.context.readPixels(
         0,
@@ -240,10 +238,12 @@
 
         constructor () {
           this.showCategory = {
+            transformations: false,
             test: false,
             objects: false,
             camera: false,
           };
+
           this.reset = () => {
             if (Scratch.vm.extensionManager) {
               Scratch.vm.extensionManager.refreshBlocks();
@@ -272,15 +272,24 @@
               },
               {
                 blockType: Scratch.BlockType.BUTTON,
+                text: this.showCategory.transformations ? Scratch.translate("Hide Transformation Blocks") : Scratch.translate("Show Transformation Blocks"),
+                func: "toggleTransform",
+              },
+              {
+                opcode: "getTransform",
+                text: "get [XYZ] [TRANFORM] of object [OBJECT]",
+                blockType: Scratch.BlockType.REPORTER,
+                hideFromPalette: !this.showCategory.transformations,
+                arguments: {
+                  XYZ: { type: Scratch.ArgumentType.STRING, menu: "XYZ" },
+                  TRANFORM: { type: Scratch.ArgumentType.STRING, menu: "transformType" },
+                  OBJECT: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
+                },
+              },
+              {
+                blockType: Scratch.BlockType.BUTTON,
                 text: this.showCategory.test ? Scratch.translate("Hide Test Blocks") : Scratch.translate("Show Test Blocks"),
                 func: "toggleCore",
-              },
-
-              {
-                opcode: "test",
-                blockType: Scratch.BlockType.COMMAND,
-                text: "init a scene",
-                hideFromPalette: !this.showCategory.test,
               },
               {
                 opcode: "renderer",
@@ -295,7 +304,7 @@
               {
                 opcode: "createMesh",
                 blockType: Scratch.BlockType.COMMAND,
-                text: "create mesh [GEOMETRY] [MATERIAL] [NAME]",
+                text: "create mesh named [NAME] with geometry [GEOMETRY] and material [MATERIAL]",
                 hideFromPalette: !this.showCategory.test,
                 arguments: {
                   GEOMETRY: { type: Scratch.ArgumentType.STRING },
@@ -303,7 +312,6 @@
                   NAME: { type: Scratch.ArgumentType.STRING },
                 },
               },
-
               {
                 blockType: Scratch.BlockType.BUTTON,
                 text: this.showCategory.objects ? Scratch.translate("Hide Object Blocks") : Scratch.translate("Show Object Blocks"),
@@ -336,99 +344,109 @@
                 blockType: Scratch.BlockType.BUTTON,
                 text: this.showCategory.camera ? Scratch.translate("Hide Camera Blocks") : Scratch.translate("Show Camera Blocks"),
                 func: "toggleCam",
-                hideFromPalette: !this.showCategory.objects
               },
               {
-                opcode: "setRenderingCamera",
-                blockType: Scratch.BlockType.COMMAND,
-                text: "set rendering camera [NAME] ",
+                blockType: "label",
+                text: "block for switching ortho/perspective here",
                 hideFromPalette: !this.showCategory.camera,
-                color1: "#5555bb",
-                arguments: {
-                    NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "camera" },
-                }
+              },
+            ],
+
+            // * Menus should be translated as necessary. See below for examples — Brackets
+            menus: {
+              
+              XYZ: { items: ["x", "y", "z"] },
+
+              transformType: {
+                items: [
+                  {
+                    text: Scratch.translate("position"),
+                    value: "position",
+                  },
+                  {
+                    text: Scratch.translate("rotation"),
+                    value: "rotation",
+                  },
+                  {
+                    text: Scratch.translate("scale"),
+                    value: "scale",
+                  },
+                ]
               },
 
-
-            ],
-            menus: {
-              objectType: { items: ["Mesh", "Sprite", "PerspectiveCamera", "OrthographicCamera", "Group", "Points", "Lines", "PointLight", "DirectionalLight", "more!"] },
+              objectType: {
+                items: [
+                  {
+                    text: Scratch.translate("Mesh"),
+                    value: "Mesh",
+                  },
+                  {
+                    text: Scratch.translate("Sprite"),
+                    value: "Sprite",
+                  },
+                  {
+                    text: Scratch.translate("Group"),
+                    value: "Group",
+                  },
+                  {
+                    text: Scratch.translate("Points"),
+                    value: "Points",
+                  },
+                  {
+                    text: Scratch.translate("Lines"),
+                    value: "Lines",
+                  },
+                  {
+                    text: Scratch.translate("PointLight"),
+                    value: "PointLight",
+                  },
+                  {
+                    text: Scratch.translate("DirectionalLight"),
+                    value: "DirectionalLight",
+                  },
+                  {
+                    text: Scratch.translate("more!"),
+                    value: "more!",
+                  },
+                ]
+              },
               cameraTypes: { items: ["PerspectiveCamera", "OrthographicCamera"] },
               rendererProperties: { items: ["autoClear", "autoClearColor", "autoClearDepth"] },
             },
+
           };
         }
 
-        placeholder() {}
+        toggleTransform() {
+          this.showCategory.transformations = !this.showCategory.transformations;
+          this.reset();
+        }
 
         toggleCore() {
           this.showCategory.test = !this.showCategory.test;
           this.reset();
         }
+
         toggleObj() {
           this.showCategory.objects = !this.showCategory.objects;
-          this.showCategory.camera = false;
           this.reset();
         }
+
         toggleCam() {
           this.showCategory.camera = !this.showCategory.camera;
           this.reset();
         }
 
+        placeholder() {}
+
+        getTransform({ XYZ, TRANSFORM, OBJECT }) {
+          if (objects.get(OBJECT))
+            return objects?.get(OBJECT)[TRANSFORM][XYZ];
+        }
+
         createMesh(args){
-          objects.set(args.NAME, new THREE.Mesh(objects.get(GEOMETRY), objects.get(args.MATERIAL)));
-        }
-        /*
-        addObject(args){
-          const mesh = objects.get(args.MESH);
-          objects.set(args.NAME, mesh);
-          renderingScene.add(mesh);
-        }*/
-
-        createCamera(args){ // This function will be improved over time - Astruegenius
-          let camera;
-          if(args.TYPE === 'OrthographicCamera'){
-            camera = new THREE.OrthographicCamera( width / - 2, width / 2, height / 2, height / - 2, 1, 1000 );
-          }
-          else{
-            camera = new THREE.PerspectiveCamera( 70, width / height, 1, 1000 );
-          }
-          objects.set(args.NAME, camera);
-          camera.position.z = 5; // civero: we directly place the camera here. So we can see the center of the scene. Optional.
-        }
-
-        setRenderingCamera(args){
-          const selected = objects.get(args.NAME); //should we make a function getObject(name)? returns the object from objects. Also checks if it exists.
-          if (!selected) {
-            console.error(`No object named "${args.NAME}"`);
-            return;
-          }
-          renderingCamera = selected;
-        }
-
-        objectExists(args){
-          if(objects.get(args.NAME)) return true; 
-          else return false;
-        }
-
-        test() {
-        //  renderingCamera = new THREE.PerspectiveCamera(      Commented out for testing purposes - Astruegenius
-        //    70,
-        //    width / height,
-        //    0.01,
-        //    10,
-        //  );
-        //  renderingCamera.position.z = 5;
-
-          renderingScene = new THREE.Scene();
-
-          const geometry = new THREE.BoxGeometry();
-          const material = new THREE.MeshNormalMaterial();
-
-          mesh = new THREE.Mesh(geometry, material);
-          objects.set("test", mesh);
-          mesh.position.z = -10;
-          renderingScene.add(mesh);
+          //* is this supposed to be objects.get(args.GEOMETRY) instead of get(GEOMETRY)? I updated it for you. - Brackets
+          objects.set(args.NAME, new THREE.Mesh(objects.get(args.GEOMETRY), objects.get(args.MATERIAL)));
         }
 
         addObject(args) {
@@ -436,29 +454,34 @@
 
           switch (args.TYPE) {
             case "PerspectiveCamera": 
-              obj.aspect = width/height;
+              obj.aspect = width / height;
               obj.updateProjectionMatrix();
               break;
-            
           }
 
           objects.set(args.NAME, obj);
           const parent = objects.get(args.PARENT);
+
           if (args.PARENT == "scene") {
-            renderingScene.add(obj);
+            scene.add(obj);
             return;
           } else if (!parent) { //should search in another map for scenes with that name (future)
             console.error(`No object named "${args.PARENT}". Adding to scene.`);
-            renderingScene.add(obj);
+            scene.add(obj);
             return;
           }
+
           parent.add(obj);
+        }
+
+        objectExists(args){
+          if(objects.get(args.NAME)) return true; 
+          else return false;
         }
 
         renderer(args) {
           three.renderer[args.PROPERTY] = JSON.parse(args.VALUE); // is there a better way than .parse?
         }
-
 
       }
 
