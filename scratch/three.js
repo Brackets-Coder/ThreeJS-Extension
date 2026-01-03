@@ -20,15 +20,18 @@
   const renderer = vm.renderer;
   const runtime = vm.runtime;
 
-  let width = runtime.stageWidth,
-    height = runtime.stageHeight;
-  const pixelScale = 2; //+resolution, -performance (probably)
+  let width, height;
+  let lastCanvas;
 
-  const THREE = await Scratch.external.importModule("https://cdn.jsdelivr.net/npm/three@latest/build/three.module.min.js");
+  //const THREE = await Scratch.external.importModule("https://cdn.jsdelivr.net/npm/three@latest/build/three.module.min.js");
+  const THREE = await import("https://cdn.jsdelivr.net/npm/three@latest/build/three.module.min.js");
   // const THREE = await import("https://esm.sh/three@0.180.0");
 
-  let three, buffers, loopId, clock;
+  let three, loopId, clock;
+  let rawBuffer, gpuView, renderData;
   let renderingScene, renderingCamera, mesh; //just for now (so the loop has them), can change later to an object or whatever
+
+  let objects = new Map();
 
   const setupThree = () => {
     const renderer = new THREE.WebGLRenderer({
@@ -36,22 +39,12 @@
       antialias: true,
       alpha: true,
     });
-    const context = renderer.getContext(); //is it faster if i define it here?
-
-    renderer.setPixelRatio(pixelScale); //* This is not the "best" way to do it according to Three.js standards, but really we just want the same size as the stage canvas - Brackets
-    renderer.setSize(width, height);
+    const context = renderer.getContext();
 
     return { renderer, context };
   };
 
   const setupSkin = () => {
-    let rawBuffer = new ArrayBuffer(width * pixelScale * height * pixelScale * 4);
-    let gpuView = new Uint8Array(rawBuffer);
-    let renderData = new ImageData(
-      new Uint8ClampedArray(rawBuffer),
-      width * pixelScale,
-      height * pixelScale,
-    );
 
     class ThreeSkin extends renderer.exports.Skin {
       constructor() {
@@ -66,7 +59,7 @@
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
-        this.updateSize(width, height, pixelScale);
+        this.onNativeSizeChanged();
       }
 
       getTexture() {
@@ -83,20 +76,43 @@
           0,
           0,
           0,
-          width * pixelScale,
-          height * pixelScale,
+          width,
+          height,
           gl.RGBA,
           gl.UNSIGNED_BYTE,
-          data,
+          data
         );
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); //mmmhh
 
         this.emitWasAltered();
       }
 
-      updateSize(width, height, pixelScale) {
+      updateSize() { //check if hqp, and adapt to new scale
+        if (renderer.useHighQualityRender) {
+          width = renderer.canvas.width;
+          height = renderer.canvas.height;
+        } else {
+          [width, height] = this._nativeSize;
+        }
+
         this._size = [width, height];
-        this._rotationCenter = [width / 2, height / 2];
+
+        three.renderer.setSize(width, height);
+
+        rawBuffer = new ArrayBuffer(
+          width * height * 4,
+        );
+        gpuView = new Uint8Array(rawBuffer);
+        renderData = new ImageData(
+          new Uint8ClampedArray(rawBuffer),
+          width,
+          height
+        );
+
+        if (renderingCamera) {
+          renderingCamera.aspect = width / height;
+          renderingCamera.updateProjectionMatrix();
+        }
 
         const gl = this._renderer.gl;
         gl.bindTexture(gl.TEXTURE_2D, this._texture);
@@ -104,8 +120,8 @@
           gl.TEXTURE_2D,
           0,
           gl.RGBA,
-          width * pixelScale,
-          height * pixelScale,
+          width,
+          height,
           0,
           gl.RGBA,
           gl.UNSIGNED_BYTE,
@@ -115,8 +131,14 @@
         this.emitWasAltered();
       }
 
+      onNativeSizeChanged() { //when stage scale is changed from 4:3 to 16:9
+        this._nativeSize = renderer.getNativeSize();
+        this._rotationCenter = [this._nativeSize[0] / 2, this._nativeSize[1] / 2];
+        this.updateSize();
+      }
+
       get size() {
-        return this._size;
+        return this._nativeSize;
       }
       
       dispose() {
@@ -128,20 +150,16 @@
       }
     }
 
-    console.log(three);
-
     three.skin = new ThreeSkin();
     renderer._allSkins[three.skin.id] = three.skin;
     const threeDrawableId = renderer.createDrawable("pen");
     renderer.updateDrawableSkinId(threeDrawableId, three.skin.id);
     renderer._allDrawables[threeDrawableId].customDrawableName = "Three Layer";
-
-    return { gpuView, renderData, threeDrawableId };
   };
 
   function init() {
     three = setupThree();
-    buffers = setupSkin();
+    setupSkin();
 
     clock = new THREE.Clock();
 
@@ -153,7 +171,7 @@
     };
 
     runtime.on("STAGE_SIZE_CHANGED", () =>
-      requestAnimationFrame(() => resize()),
+      requestAnimationFrame(() => three.skin.onNativeSizeChanged()),
     );
 
     runtime.on("PROJECT_START", () => {
@@ -167,33 +185,17 @@
       }
     });
 
+    const originalHQP = Scratch.vm.renderer.setUseHighQualityRender;
+
+    Scratch.vm.renderer.setUseHighQualityRender = function(state) {
+      originalHQP.call(Scratch.vm.renderer, state);
+      
+      console.log("HQP toggled!");
+    };
+
     //* Why are we calling a function that hasn't been defined yet? - Brackets
-    loop(); //autostart?
-  }
-
-  function resize() {
-    ((width = runtime.stageWidth), (height = runtime.stageHeight));
-    console.log(width, height);
-
-    //recreate buffers, "texture" dimensions
-    buffers.rawBuffer = new ArrayBuffer(
-      width * pixelScale * height * pixelScale * 4,
-    );
-
-    buffers.gpuView = new Uint8Array(buffers.rawBuffer);
-    buffers.renderData = new ImageData(
-      new Uint8ClampedArray(buffers.rawBuffer),
-      width * pixelScale,
-      height * pixelScale,
-    );
-
-    three.renderer.setSize(width, height);
-    three.skin.updateSize(width, height, pixelScale);
-
-    if (renderingCamera) {
-      renderingCamera.aspect = width / height;
-      renderingCamera.updateProjectionMatrix();
-    }
+    //init is called when loading the extension blocks. so it's executed after. - Civero!
+    loop(); //autostart? Not working every the time... why?
   }
 
   const loop = () => {
@@ -211,15 +213,24 @@
       three.context.readPixels(
         0,
         0,
-        width * pixelScale,
-        height * pixelScale,
+        width,
+        height,
         three.context.RGBA,
         three.context.UNSIGNED_BYTE,
-        buffers.gpuView,
+        gpuView,
       );
-      three.skin.updateTexture(buffers.renderData);
+      three.skin.updateTexture(renderData);
       renderer.dirty = true;
     }
+
+    const canvas = `${renderer.canvas.width}x${renderer.canvas.height}`;
+
+    if (lastCanvas !== canvas) {
+      lastCanvas = canvas;
+      three.skin.updateSize();
+      console.log(canvas);
+    }
+  
   };
 
   Promise.resolve(init())
@@ -230,6 +241,13 @@
         constructor () {
           this.showCategory = {
             test: false,
+            objects: false,
+            camera: false,
+          };
+          this.reset = () => {
+            if (Scratch.vm.extensionManager) {
+              Scratch.vm.extensionManager.refreshBlocks();
+            }
           };
         }
 
@@ -257,6 +275,7 @@
                 text: this.showCategory.test ? Scratch.translate("Hide Test Blocks") : Scratch.translate("Show Test Blocks"),
                 func: "toggleCore",
               },
+
               {
                 opcode: "test",
                 blockType: Scratch.BlockType.COMMAND,
@@ -274,43 +293,132 @@
                 },
               },
               {
-                opcode: "name",
+                opcode: "createMesh",
                 blockType: Scratch.BlockType.COMMAND,
-                text: "add [TYPE] named [NAME] to [GROUP]",
+                text: "create mesh [GEOMETRY] [MATERIAL] [NAME]",
                 hideFromPalette: !this.showCategory.test,
                 arguments: {
-                  TYPE: { type: Scratch.ArgumentType.STRING, menu: "objectType" },
-                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
-                  GROUP: { type: Scratch.ArgumentType.STRING, defaultValue: "scene" },
+                  GEOMETRY: { type: Scratch.ArgumentType.STRING },
+                  MATERIAL: { type: Scratch.ArgumentType.STRING },
+                  NAME: { type: Scratch.ArgumentType.STRING },
                 },
               },
+
+              {
+                blockType: Scratch.BlockType.BUTTON,
+                text: this.showCategory.objects ? Scratch.translate("Hide Object Blocks") : Scratch.translate("Show Object Blocks"),
+                func: "toggleObj",
+              },
+              {
+                opcode: "addObject",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "add [TYPE] named [NAME] to [PARENT]",
+                hideFromPalette: !this.showCategory.objects,
+                color1: "#22bbaa",
+                arguments: {
+                  TYPE: { type: Scratch.ArgumentType.STRING, menu: "objectType" },
+                  INFO: { type: Scratch.ArgumentType.STRING, defaultValue: "object data name" },
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
+                  PARENT: { type: Scratch.ArgumentType.STRING, defaultValue: "scene" },
+                },
+              },
+              {
+                opcode: "objectExists",
+                blockType: Scratch.BlockType.BOOLEAN,
+                text: "object [NAME] exists",
+                hideFromPalette: !this.showCategory.objects,
+                color1: "#22bbaa",
+                arguments: {
+                    NAME: { type: Scratch.ArgumentType.STRING},
+                }
+              },
+              {
+                blockType: Scratch.BlockType.BUTTON,
+                text: this.showCategory.camera ? Scratch.translate("Hide Camera Blocks") : Scratch.translate("Show Camera Blocks"),
+                func: "toggleCam",
+                hideFromPalette: !this.showCategory.objects
+              },
+              {
+                opcode: "setRenderingCamera",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "set rendering camera [NAME] ",
+                hideFromPalette: !this.showCategory.camera,
+                color1: "#5555bb",
+                arguments: {
+                    NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "camera" },
+                }
+              },
+
+
             ],
             menus: {
-              objectType: { items: ["Mesh", "Sprite", "..."] },
+              objectType: { items: ["Mesh", "Sprite", "PerspectiveCamera", "OrthographicCamera", "Group", "Points", "Lines", "PointLight", "DirectionalLight", "more!"] },
+              cameraTypes: { items: ["PerspectiveCamera", "OrthographicCamera"] },
               rendererProperties: { items: ["autoClear", "autoClearColor", "autoClearDepth"] },
             },
           };
         }
 
-        placeholder() {
-
-        }
+        placeholder() {}
 
         toggleCore() {
           this.showCategory.test = !this.showCategory.test;
-          if (Scratch.vm.extensionManager) {
-            Scratch.vm.extensionManager.refreshBlocks();
+          this.reset();
+        }
+        toggleObj() {
+          this.showCategory.objects = !this.showCategory.objects;
+          this.showCategory.camera = false;
+          this.reset();
+        }
+        toggleCam() {
+          this.showCategory.camera = !this.showCategory.camera;
+          this.reset();
+        }
+
+        createMesh(args){
+          objects.set(args.NAME, new THREE.Mesh(objects.get(GEOMETRY), objects.get(args.MATERIAL)));
+        }
+        /*
+        addObject(args){
+          const mesh = objects.get(args.MESH);
+          objects.set(args.NAME, mesh);
+          renderingScene.add(mesh);
+        }*/
+
+        createCamera(args){ // This function will be improved over time - Astruegenius
+          let camera;
+          if(args.TYPE === 'OrthographicCamera'){
+            camera = new THREE.OrthographicCamera( width / - 2, width / 2, height / 2, height / - 2, 1, 1000 );
           }
+          else{
+            camera = new THREE.PerspectiveCamera( 70, width / height, 1, 1000 );
+          }
+          objects.set(args.NAME, camera);
+          camera.position.z = 5; // civero: we directly place the camera here. So we can see the center of the scene. Optional.
+        }
+
+        setRenderingCamera(args){
+          const selected = objects.get(args.NAME); //should we make a function getObject(name)? returns the object from objects. Also checks if it exists.
+          if (!selected) {
+            console.error(`No object named "${args.NAME}"`);
+            return;
+          }
+          renderingCamera = selected;
+        }
+
+        objectExists(args){
+          if(objects.get(args.NAME)) return true; 
+          else return false;
         }
 
         test() {
-          renderingCamera = new THREE.PerspectiveCamera(
-            70,
-            width / height,
-            0.01,
-            10,
-          );
-          renderingCamera.position.z = 5;
+        //  renderingCamera = new THREE.PerspectiveCamera(      Commented out for testing purposes - Astruegenius
+        //    70,
+        //    width / height,
+        //    0.01,
+        //    10,
+        //  );
+        //  renderingCamera.position.z = 5;
 
           renderingScene = new THREE.Scene();
 
@@ -318,20 +426,40 @@
           const material = new THREE.MeshNormalMaterial();
 
           mesh = new THREE.Mesh(geometry, material);
+          objects.set("test", mesh);
+          mesh.position.z = -10;
           renderingScene.add(mesh);
         }
 
-        name(args) {
+        addObject(args) {
           const obj = new THREE[args.TYPE]();
-          obj.name = args.NAME;
 
-          renderingScene.add(obj);
-          //add to a map to keep track
+          switch (args.TYPE) {
+            case "PerspectiveCamera": 
+              obj.aspect = width/height;
+              obj.updateProjectionMatrix();
+              break;
+            
+          }
+
+          objects.set(args.NAME, obj);
+          const parent = objects.get(args.PARENT);
+          if (args.PARENT == "scene") {
+            renderingScene.add(obj);
+            return;
+          } else if (!parent) { //should search in another map for scenes with that name (future)
+            console.error(`No object named "${args.PARENT}". Adding to scene.`);
+            renderingScene.add(obj);
+            return;
+          }
+          parent.add(obj);
         }
 
         renderer(args) {
           three.renderer[args.PROPERTY] = JSON.parse(args.VALUE); // is there a better way than .parse?
         }
+
+
       }
 
       Scratch.extensions.register(new ThreeJS());
