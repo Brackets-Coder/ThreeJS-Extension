@@ -444,7 +444,7 @@
 
           objects.set(args.NAME, obj);
           const parent = objects.get(args.PARENT);
-          if (!parent) {
+          if (!parent || args.PARENT === "scene") { //should search in another map for scenes with that name (future)
             console.error(`No object named "${args.NAME}". Adding to scene.`);
             renderingScene.add(obj);
             return;
