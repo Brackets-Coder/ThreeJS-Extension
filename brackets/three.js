@@ -97,10 +97,13 @@
       const gl = this._renderer.gl;
       gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
       gl.bindTexture(gl.TEXTURE_2D, this._texture);
-      gl.texImage2D(
+      gl.texSubImage2D(
         gl.TEXTURE_2D,
         0,
-        gl.RGBA,
+        0,
+        0,
+        this._canvas.width,
+        this._canvas.height,
         gl.RGBA,
         gl.UNSIGNED_BYTE,
         this._canvas
@@ -111,19 +114,36 @@
     }
   
     resizeCanvas() {
-      let w, h;
+      let width, height;
       if (this._renderer.useHighQualityRender) {
-        w = this._renderer.canvas.width;
-        h = this._renderer.canvas.height;
+        width = this._renderer.canvas.width;
+        height = this._renderer.canvas.height;
       } else {
-        [w, h] = this._nativeSize;
+        [width, height] = this._nativeSize;
       }
+
+      const gl = this._renderer.gl;
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+      gl.bindTexture(gl.TEXTURE_2D, this._texture);
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        width,
+        height,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        null,
+      );
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+  
     
-      this._canvas.width = w;
-      this._canvas.height = h;
+      this._canvas.width = width;
+      this._canvas.height = height;
     
-      this.threeRenderer.setSize(w, h);
-      camera.aspect = w / h;
+      this.threeRenderer.setSize(width, height);
+      camera.aspect = width / height;
       camera.updateProjectionMatrix();
     
       this.updateContent();
@@ -161,6 +181,7 @@
   
     const originalDraw = renderer.draw;
   
+    // This is likely the cause of the performance inconsistencies
     renderer.draw = function() {
       skin.updateContent();
       originalDraw.call(this);
