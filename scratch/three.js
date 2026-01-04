@@ -29,7 +29,7 @@
 
   let three, loopId, clock;
   let rawBuffer, gpuView, renderData;
-  let scene, camera, mesh; //just for now (so the loop has them), can change later to an object or whatever
+  let scene, camera; //just for now (so the loop has them), can change later to an object or whatever - Civ
 
   let objects = new Map();
 
@@ -70,7 +70,7 @@
         const gl = this._renderer.gl;
         gl.bindTexture(gl.TEXTURE_2D, this._texture);
 
-        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true); //what is this for?
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
         gl.texSubImage2D(
           gl.TEXTURE_2D,
           0,
@@ -82,12 +82,12 @@
           gl.UNSIGNED_BYTE,
           data
         );
-        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); //mmmhh
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
 
         this.emitWasAltered();
       }
 
-      updateSize() { //check if hqp, and adapt to new scale
+      updateSize() {
         if (renderer.useHighQualityRender) {
           width = renderer.canvas.width;
           height = renderer.canvas.height;
@@ -131,7 +131,7 @@
         this.emitWasAltered();
       }
 
-      onNativeSizeChanged() { //when stage scale is changed from 4:3 to 16:9
+      onNativeSizeChanged() {
         this._nativeSize = renderer.getNativeSize();
         this._rotationCenter = [this._nativeSize[0] / 2, this._nativeSize[1] / 2];
         this.updateSize();
@@ -161,6 +161,7 @@
     three = setupThree();
     setupSkin();
 
+    scene = new THREE.Scene();
     clock = new THREE.Clock();
 
     window._ThreeJS_ = {
@@ -186,14 +187,13 @@
     });
 
     const originalHQP = Scratch.vm.renderer.setUseHighQualityRender;
-
     Scratch.vm.renderer.setUseHighQualityRender = function(state) {
       originalHQP.call(Scratch.vm.renderer, state);
       
       console.log("HQP toggled!");
     };
 
-    loop(); //autostart? Not working every the time... why?
+    loop(); //autostart? Not working every the time... why? - Civ
   }
 
   const loop = () => {
@@ -201,10 +201,9 @@
 
     const delta = clock.getDelta();
 
-    if (camera && scene && mesh) {
+    if (camera && scene) {
       //animation (delete)
-      mesh.rotation.x += delta * 2;
-      mesh.rotation.y += delta * 2;
+      camera.position.z = Math.abs(Math.sin(clock.elapsedTime * 1)) * 5 + 5;
 
       three.renderer.render(scene, camera);
 
@@ -253,8 +252,8 @@
 
         getInfo() {
           return {
-            id: "turboJS", //lets do a poll of smth to choose this?
-            name: Scratch.translate("ThreeJS"), //what is the translation of that
+            id: "turboJS",
+            name: Scratch.translate("ThreeJS"),
             color1: "#59b367",
             color2: "#438a7cff",
             color3: "#407e4cff",
@@ -346,6 +345,16 @@
                 func: "toggleCam",
               },
               {
+                opcode: "setRenderingCamera",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "set rendering camera [NAME] ",
+                hideFromPalette: !this.showCategory.camera,
+                color1: "#5555bb",
+                arguments: {
+                    NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "camera" },
+                }
+              },
+              {
                 blockType: "label",
                 text: "block for switching ortho/perspective here",
                 hideFromPalette: !this.showCategory.camera,
@@ -381,6 +390,10 @@
                     value: "Mesh",
                   },
                   {
+                    text: Scratch.translate("Perspective Camera"),
+                    value: "PerspectiveCamera"
+                  },
+                  {
                     text: Scratch.translate("Sprite"),
                     value: "Sprite",
                   },
@@ -397,11 +410,11 @@
                     value: "Lines",
                   },
                   {
-                    text: Scratch.translate("PointLight"),
+                    text: Scratch.translate("Point Light"),
                     value: "PointLight",
                   },
                   {
-                    text: Scratch.translate("DirectionalLight"),
+                    text: Scratch.translate("Directional Light"),
                     value: "DirectionalLight",
                   },
                   {
@@ -410,7 +423,6 @@
                   },
                 ]
               },
-              cameraTypes: { items: ["PerspectiveCamera", "OrthographicCamera"] },
               rendererProperties: { items: ["autoClear", "autoClearColor", "autoClearDepth"] },
             },
 
@@ -439,6 +451,10 @@
 
         placeholder() {}
 
+        renderer(args) {
+          three.renderer[args.PROPERTY] = JSON.parse(args.VALUE); // is there a better way than .parse? - Civ
+        }
+
         getTransform({ XYZ, TRANSFORM, OBJECT }) {
           if (objects.get(OBJECT))
             return objects?.get(OBJECT)[TRANSFORM][XYZ];
@@ -446,6 +462,7 @@
 
         createMesh(args){
           //* is this supposed to be objects.get(args.GEOMETRY) instead of get(GEOMETRY)? I updated it for you. - Brackets
+          //im unsure about this block. we can create an empty mesh with addObject(). Then assign a material and a geometry to it. - Civero
           objects.set(args.NAME, new THREE.Mesh(objects.get(args.GEOMETRY), objects.get(args.MATERIAL)));
         }
 
@@ -457,6 +474,9 @@
               obj.aspect = width / height;
               obj.updateProjectionMatrix();
               break;
+            case "Mesh":
+              obj.material = new THREE.MeshNormalMaterial();
+              obj.geometry = new THREE.TorusKnotGeometry();
           }
 
           objects.set(args.NAME, obj);
@@ -465,7 +485,7 @@
           if (args.PARENT == "scene") {
             scene.add(obj);
             return;
-          } else if (!parent) { //should search in another map for scenes with that name (future)
+          } else if (!parent) { //should search in another map for scenes with that name (future) - Civ
             console.error(`No object named "${args.PARENT}". Adding to scene.`);
             scene.add(obj);
             return;
@@ -479,8 +499,13 @@
           else return false;
         }
 
-        renderer(args) {
-          three.renderer[args.PROPERTY] = JSON.parse(args.VALUE); // is there a better way than .parse?
+        setRenderingCamera(args){
+          const selected = objects.get(args.NAME);
+          if (!selected) {
+            console.error(`No object named "${args.NAME}"`);
+            return;
+          }
+          camera = selected;
         }
 
       }
