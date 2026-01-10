@@ -507,11 +507,11 @@
               obj.updateProjectionMatrix();
               break;
             case "OrthographicCamera":
-              const [width, height] = three.skin._nativeSize;
-              obj.top = height / 50;
-              obj.bottom = height / -50;
-              obj.right = width / 50;
-              obj.left = width / -50;
+              const [w, h] = three.skin._nativeSize;
+              obj.top = h / 50;
+              obj.bottom = h / -50;
+              obj.right = w / 50;
+              obj.left = w / -50;
               obj.updateProjectionMatrix();
               break;
             case "Mesh":
