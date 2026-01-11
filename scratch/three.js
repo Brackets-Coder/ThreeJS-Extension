@@ -243,6 +243,7 @@
     .then(() => {
 
       //toughts on this? To have each section better organized. - civ
+      //this is not good, ignore it. i tried the same with the folders and when refreshing it wont update. also tried to place it inside constructor as this.- civ
       const coreBlocks = [
         {
           blockType: "label",
@@ -262,13 +263,14 @@
 
       class ThreeJS {
 
-        constructor () {
+        constructor (expanded = true) {
           this.showCategory = {
-            transformations: false,
-            test: false,
-            objects: false,
-            camera: false,
+            transformations: expanded, //what do we consider for the "core"? we don't want each block to have its folder - civ
+            test: expanded,
+            objects: expanded,
+            camera: expanded,
           };
+          console.log(this.showCategory);
 
           this.reset = () => {
             if (Scratch.vm.extensionManager) {
@@ -306,9 +308,22 @@
                 },
               },
               {
+                opcode: "setTransform",
+                text: "set [XYZ] [TRANFORM] of object [OBJECT] to [VALUE]",
+                blockType: Scratch.BlockType.REPORTER,
+                hideFromPalette: !this.showCategory.transformations,
+                arguments: {
+                  XYZ: { type: Scratch.ArgumentType.STRING, menu: "XYZ" },
+                  TRANFORM: { type: Scratch.ArgumentType.STRING, menu: "transformType" },
+                  OBJECT: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
+                  VALUE: { type: "number", defaultValue: "1" },
+                },
+              },
+
+              {
                 blockType: Scratch.BlockType.BUTTON,
                 text: this.showCategory.test ? Scratch.translate("Hide Test Blocks") : Scratch.translate("Show Test Blocks"),
-                func: "toggleCore",
+                func: "toggleTest",
               },
               {
                 opcode: "renderer",
@@ -331,6 +346,7 @@
                   NAME: { type: Scratch.ArgumentType.STRING },
                 },
               },
+
               {
                 blockType: Scratch.BlockType.BUTTON,
                 text: this.showCategory.objects ? Scratch.translate("Hide Object Blocks") : Scratch.translate("Show Object Blocks"),
@@ -359,6 +375,7 @@
                     NAME: { type: Scratch.ArgumentType.STRING},
                 }
               },
+
               {
                 blockType: Scratch.BlockType.BUTTON,
                 text: this.showCategory.camera ? Scratch.translate("Hide Camera Blocks") : Scratch.translate("Show Camera Blocks"),
@@ -464,7 +481,7 @@
           this.reset();
         }
 
-        toggleCore() {
+        toggleTest() {
           this.showCategory.test = !this.showCategory.test;
           this.reset();
         }
@@ -490,6 +507,11 @@
         getTransform({ XYZ, TRANSFORM, OBJECT }) {
           if (objects.get(OBJECT))
             return objects?.get(OBJECT)[TRANSFORM][XYZ];
+        }
+
+        setTransform(args) {
+          const obj = objects.get(args.OBJECT);
+          obj[args.TRANFORM][args.XYZ] = args.VALUE;
         }
 
         createMesh(args){
