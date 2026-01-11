@@ -171,6 +171,7 @@
 
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(90, width/height);
+    objects.set("camera", camera);
     clock = new THREE.Clock();
 
     window._ThreeJS_ = {
@@ -211,9 +212,6 @@
     const delta = clock.getDelta();
 
     if (camera && scene) {
-      //animation (delete)
-      camera.position.z = Math.abs(Math.sin(clock.elapsedTime * 1)) * 5 + 5;
-
       three.renderer.render(scene, camera);
 
       three.context.readPixels(
@@ -310,7 +308,7 @@
               {
                 opcode: "setTransform",
                 text: "set [XYZ] [TRANFORM] of object [OBJECT] to [VALUE]",
-                blockType: Scratch.BlockType.REPORTER,
+                blockType: "command",
                 hideFromPalette: !this.showCategory.transformations,
                 arguments: {
                   XYZ: { type: Scratch.ArgumentType.STRING, menu: "XYZ" },
@@ -521,6 +519,11 @@
         }
 
         addObject(args) {
+          if (this.objectExists({NAME: args.NAME})) {
+            console.warn(`Already existing object named "${args.NAME}". Will replace!`);
+            const obj = objects.get(args.NAME);
+            obj.dispose();
+          }
           const obj = new THREE[args.TYPE]();
 
           switch (args.TYPE) {
