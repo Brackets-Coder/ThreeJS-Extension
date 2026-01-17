@@ -6,7 +6,7 @@
 
 // Started October 21, 2025.
 
-(async function(Scratch) {
+(async function (Scratch) {
   'use strict';
 
   if (!Scratch.extensions.unsandboxed) {
@@ -26,42 +26,25 @@
   scene.add(new THREE.AmbientLight(0xffffff, 0.5));
   scene.add(new THREE.DirectionalLight(0xffffff, 0.5));
 
-  let deltaTime = 0;
-  let previousTime = 0;
+  const canvas = document.createElement('canvas');
+  let threeRender = new THREE.WebGLRenderer({ alpha: true, antialias: true, canvas: canvas });
 
-  vm.runtime.on('BEFORE_EXECUTE', () => {
-    const now = performance.now();
-
-    if (previousTime === 0) {
-      // First frame. We used to always return 0 here, but that can break projects that
-      // expect delta time to always be non-zero. Instead we'll make our best guess.
-      deltaTime = 1 / vm.runtime.frameLoop.framerate;
-    } else {
-      deltaTime = (now - previousTime) / 1000;
-    }
-
-    previousTime = now;
-  });
+  const clock = new THREE.Clock();
 
   // Now that Three.js is loaded, create a stage layer to draw the rendered output to
   // Some of this skin class is based on the fantastic Simple3D extension
   class ThreeSkin extends Scratch.vm.renderer.exports.Skin {
     constructor(id, renderer) {
       super(id, renderer);
-  
+
       this._renderer = renderer;
-  
-      const canvas = document.createElement('canvas');
+
       this._canvas = canvas;
-  
-      this.threeRenderer = new THREE.WebGLRenderer({
-        alpha: true,
-        antialias: true,
-        canvas: canvas,
-      });
+
+      this.threeRenderer = threeRender
 
       this.threeRenderer.setClearColor(0x000000, 0);
-  
+
       const gl = renderer.gl;
       const texture = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -76,24 +59,24 @@
       renderer.on('NativeSizeChanged', this._boundOnNativeSizeChanged);
       this.resizeCanvas();
     }
-  
+
     dispose() {
       this._renderer.removeListener('NativeSizeChanged', this._boundOnNativeSizeChanged);
       if (this._texture) this._renderer.gl.deleteTexture(this._texture);
       super.dispose();
     }
-  
+
     get size() {
       return this._nativeSize;
     }
-  
+
     getTexture() {
       return this._texture;
     }
-  
+
     updateContent() {
       this.threeRenderer.render(scene, camera);
-  
+
       const gl = this._renderer.gl;
       gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
       gl.bindTexture(gl.TEXTURE_2D, this._texture);
@@ -109,10 +92,10 @@
         this._canvas
       );
       gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-  
+
       this.emitWasAltered();
     }
-  
+
     resizeCanvas() {
       let width, height;
       if (this._renderer.useHighQualityRender) {
@@ -137,24 +120,24 @@
         null,
       );
       gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-  
-    
+
+
       this._canvas.width = width;
       this._canvas.height = height;
-    
+
       this.threeRenderer.setSize(width, height);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
-    
+
       this.updateContent();
     }
-  
+
     onNativeSizeChanged(event) {
       this._nativeSize = event.newSize;
       this._rotationCenter = [this._nativeSize[0] / 2, this._nativeSize[1] / 2];
       this.resizeCanvas();
     }
-  } 
+  }
 
   // use the drawable order to create a new three drawable between the pen and video layers
   // It's wrapped in an IIFE for collapsibilitiy 
@@ -166,27 +149,26 @@
       groupIndex: videoIndex + 1,
       drawListOffset: renderer._layerGroups['video'].drawListOffset
     };
-  
+
     renderer._groupOrdering.forEach((name, i) => {
       renderer._layerGroups[name].groupIndex = i;
     });
-  
+
     const skinId = renderer._nextSkinId++;
     const skin = new ThreeSkin(skinId, renderer); // your Three.js skin
     renderer._allSkins[skinId] = skin;
-  
+
     const drawableId = renderer.createDrawable(groupName);
     const drawable = renderer._allDrawables[drawableId];
     renderer.updateDrawableSkinId(drawableId, skinId);
-  
+
     const originalDraw = renderer.draw;
-  
-    // This is likely the cause of the performance inconsistencies
+
     renderer.draw = function() {
       skin.updateContent();
       originalDraw.call(this);
     };
-  
+
     drawable.setHighQuality = function (...args) {
       Object.getPrototypeOf(this).setHighQuality(...args);
       this.skin.resizeCanvas();
@@ -219,6 +201,11 @@
           {
             blockType: 'label',
             text: Scratch.translate('Objects'),
+          },
+          {
+            opcode: 'deltaTime',
+            text: Scratch.translate("delta time"),
+            blockType: Scratch.BlockType.REPORTER,
           },
           {
             opcode: 'createObject',
@@ -297,6 +284,10 @@
       };
     }
 
+    deltaTime () {
+      return clock.getDelta();
+    }
+
     createObject({ OBJECT }) {
       const geometry = geometries.box;
       const material = materials.standard;
@@ -314,13 +305,13 @@
     }
 
     setTransform({ OBJECT, TRANSFORM, X, Y, Z }) {
-      (TRANSFORM === 'rotation') ? 
+      (TRANSFORM === 'rotation') ?
         objects[OBJECT]?.[TRANSFORM].set(
           THREE.MathUtils.degToRad(X),
           THREE.MathUtils.degToRad(Y),
           THREE.MathUtils.degToRad(Z)
         )
-      : objects[OBJECT]?.[TRANSFORM].set(X, Y, Z);
+        : objects[OBJECT]?.[TRANSFORM].set(X, Y, Z);
     }
 
   }
