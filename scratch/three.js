@@ -32,6 +32,7 @@
   let scene, camera; //just for now (so the loop has them), can change later to an object or whatever - Civ
 
   let objects = new Map();
+  let geometries = new Map();
 
   const setupThree = () => {
     const renderer = new THREE.WebGLRenderer({
@@ -171,6 +172,7 @@
 
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(90, width/height);
+    camera.position.z = 4;
     objects.set("camera", camera);
     clock = new THREE.Clock();
 
@@ -267,6 +269,7 @@
             test: expanded,
             objects: expanded,
             camera: expanded,
+            geometry: expanded,
           };
           console.log(this.showCategory);
 
@@ -347,35 +350,6 @@
 
               {
                 blockType: Scratch.BlockType.BUTTON,
-                text: this.showCategory.objects ? Scratch.translate("Hide Object Blocks") : Scratch.translate("Show Object Blocks"),
-                func: "toggleObj",
-              },
-              {
-                opcode: "addObject",
-                blockType: Scratch.BlockType.COMMAND,
-                text: "add [TYPE] named [NAME] to [PARENT]",
-                hideFromPalette: !this.showCategory.objects,
-                color1: "#22bbaa",
-                arguments: {
-                  TYPE: { type: Scratch.ArgumentType.STRING, menu: "objectType" },
-                  INFO: { type: Scratch.ArgumentType.STRING, defaultValue: "object data name" },
-                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
-                  PARENT: { type: Scratch.ArgumentType.STRING, defaultValue: "scene" },
-                },
-              },
-              {
-                opcode: "objectExists",
-                blockType: Scratch.BlockType.BOOLEAN,
-                text: "object [NAME] exists",
-                hideFromPalette: !this.showCategory.objects,
-                color1: "#22bbaa",
-                arguments: {
-                    NAME: { type: Scratch.ArgumentType.STRING},
-                }
-              },
-
-              {
-                blockType: Scratch.BlockType.BUTTON,
                 text: this.showCategory.camera ? Scratch.translate("Hide Camera Blocks") : Scratch.translate("Show Camera Blocks"),
                 func: "toggleCam",
               },
@@ -393,6 +367,75 @@
                 blockType: "label",
                 text: "block for switching ortho/perspective here",
                 hideFromPalette: !this.showCategory.camera,
+              },
+
+              {
+                blockType: Scratch.BlockType.BUTTON,
+                text: this.showCategory.objects ? Scratch.translate("Hide Object Blocks") : Scratch.translate("Show Object Blocks"),
+                func: "toggleObj",
+              },
+              {
+                opcode: "addObject",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "add [TYPE] named [NAME] to [PARENT]",
+                hideFromPalette: !this.showCategory.objects,
+                color1: "#22bbaa",
+                arguments: {
+                  TYPE: { type: Scratch.ArgumentType.STRING, menu: "objectType" },
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
+                  PARENT: { type: Scratch.ArgumentType.STRING, defaultValue: "scene" },
+                },
+              },
+              {
+                opcode: "objectExists",
+                blockType: Scratch.BlockType.BOOLEAN,
+                text: "object [NAME] exists",
+                hideFromPalette: !this.showCategory.objects,
+                color1: "#22bbaa",
+                arguments: {
+                    NAME: { type: Scratch.ArgumentType.STRING},
+                }
+              },
+              {
+                opcode: "setObject",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "set mesh [NAME] [PROPERTY] to [DATA]",
+                hideFromPalette: !this.showCategory.objects,
+                color1: "#22bbaa",
+                arguments: {
+                  PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "meshProperties" },
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
+                  DATA: { type: Scratch.ArgumentType.STRING, defaultValue: "cube" },
+                },
+              },
+
+              {
+                blockType: Scratch.BlockType.BUTTON,
+                text: this.showCategory.geometry ? Scratch.translate("Hide Geometry Blocks") : Scratch.translate("Show Geometry Blocks"),
+                func: "toggleGeo",
+              },
+              {
+                opcode: "createGeometry",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "create [TYPE] geometry named [NAME]",
+                hideFromPalette: !this.showCategory.geometry,
+                color1: "#bb229a",
+                arguments: {
+                  TYPE: { type: Scratch.ArgumentType.STRING, menu: "geometryType", defaultValue: "BoxGeometry" },
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "cube" },
+                },
+              },
+              {
+                opcode: "setGeometry",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "set geometry [NAME] [PROPERTY] to [DATA]",
+                hideFromPalette: !this.showCategory.geometry,
+                color1: "#bb229a",
+                arguments: {
+                  PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "geometryProperties", defaultValue: "position"},
+                  DATA: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,0,0] [0,1,0] [1,0,0]"}, // how would we divide it? an array with v3 arrays? (better visual) or, separated: 0,0,0,0,1,0,1,0,0 - civ
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "cube" },
+                },
               },
             ],
 
@@ -462,6 +505,42 @@
                   },
                 ]
               },
+              meshProperties: { items: [
+                {
+                  text: "Geometry",
+                  value: "geometry"
+                }
+                //material and +++
+              ]},
+              geometryType: { items: [
+                {
+                  text: "Empty",
+                  value: "BufferGeometry"
+                },
+                {
+                  text: "Cube",
+                  value: "BoxGeometry"
+                },
+              ]},
+              geometryProperties: { items: [
+                {
+                  text: "Vertex points [XYZ]",
+                  value: "position"
+                },
+                {
+                  text: "Texture points [UV]",
+                  value: "uv"
+                },
+                {
+                  text: "Face points (Normals) [XYZ]",
+                  value: "normal"
+                },
+  /*            {
+                  text: "Index points",
+                  value: "index"
+                },
+  */              
+              ]},
               rendererProperties: { items: ["autoClear", "autoClearColor", "autoClearDepth"] },
               sceneProperties: {items: [
                 {
@@ -494,6 +573,11 @@
           this.reset();
         }
 
+        toggleGeo() {
+          this.showCategory.geometry = !this.showCategory.geometry;
+          this.reset();
+        }
+
         placeholder(args) {
           scene.background = new THREE.Color(args.VALUE);
         }
@@ -522,7 +606,7 @@
           if (this.objectExists({NAME: args.NAME})) {
             console.warn(`Already existing object named "${args.NAME}". Will replace!`);
             const obj = objects.get(args.NAME);
-            obj.dispose();
+            scene.remove(obj);
           }
           const obj = new THREE[args.TYPE]();
 
@@ -572,6 +656,44 @@
             return;
           }
           camera = selected;
+        }
+
+        setObject(args) {
+          let data;
+          const obj = objects.get(args.NAME);
+
+          switch (args.PROPERTY) {
+            case "geometry":
+              data = geometries.get(args.DATA);
+              obj.geometry = data;
+              break;
+            //materials...
+          }
+        }
+
+        createGeometry(args) {
+         const geometry = new THREE[args.TYPE]();
+          geometries.set(args.NAME, geometry);
+        }
+
+        setGeometry(args) {
+          const geometry = geometries.get(args.NAME);
+
+          let data, dataLength;
+          data = args.DATA.split(" ").map(p=>JSON.parse(p)).flat(); //from [0,0,0] [0,0,1] to 0,0,0,0,0,1
+
+          switch (args.PROPERTY) {
+            case "position" || "normal":
+              dataLength = 3; //v3
+              break;
+            case "uv":
+              dataLength = 2;
+              break;
+          }
+
+          //args.PROPERTY == "index" ?
+          //geometry.setIndex(data) :
+          geometry.setAttribute(args.PROPERTY, new THREE.BufferAttribute(new Float32Array(data), dataLength));
         }
 
       }
