@@ -312,7 +312,7 @@
                 opcode: "addObject",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "add [TYPE] named [NAME] to [PARENT]",
-                color1: "#60712F",
+                color1: "#49712f",
                 arguments: {
                   TYPE: { type: Scratch.ArgumentType.STRING, menu: "objectType" },
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
@@ -323,7 +323,7 @@
                 opcode: "objectExists",
                 blockType: Scratch.BlockType.BOOLEAN,
                 text: "object [NAME] exists",
-                color1: "#60712F",
+                color1: "#49712f",
                 arguments: {
                     NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object"},
                 }
@@ -332,7 +332,7 @@
                 opcode: "setObject",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "set mesh [NAME] [PROPERTY] to [DATA]",
-                color1: "#60712F",
+                color1: "#49712f",
                 arguments: {
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "meshProperties" },
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
@@ -396,9 +396,16 @@
               text: Scratch.translate("Camera")},
 
               {
+                opcode: "camera",
+                blockType: Scratch.BlockType.REPORTER,
+                text: "rendering camera",
+                color1: "#634B66",
+              },
+
+              {
                 opcode: "setRenderingCamera",
                 blockType: Scratch.BlockType.COMMAND,
-                text: "set rendering camera [NAME] ",
+                text: "set rendering camera to [NAME]",
                 color1: "#634B66",
                 arguments: {
                     NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "camera" },
@@ -478,14 +485,19 @@
                 //material and +++
               ]},
               geometryType: { items: [
-                {
-                  text: "Empty",
-                  value: "BufferGeometry"
-                },
-                {
-                  text: "Cube",
-                  value: "BoxGeometry"
-                },
+                {text: "Empty", value: "BufferGeometry"},
+                {text: "Cube", value: "BoxGeometry"},
+                {text: "Capsule", value: "CapsuleGeometry"},
+                {text: "Circle", value: "CircleGeometry"},
+                {text: "Cone", value: "ConeGeometry"},
+                {text: "Dodecahedron", value: "DodecahedronGeometry"},
+                {text: "Icosahedron", value: "IcosahedronGeometry"},
+                {text: "Octahedron", value: "OctahedronGeometry"},
+                {text: "Plane", value: "PlaneGeometry"},
+                {text: "Sphere", value: "SphereGeometry"},
+                {text: "Tetrahedron", value: "TetrahedronGeometry"},
+                {text: "Torus", value: "TorusGeometry"},
+                {text: "Torus Knot", value: "TorusKnotGeometry"},
               ]},
               geometryProperties: { items: [
                 {
@@ -625,6 +637,8 @@
           }
           camera = selected;
         }
+
+        camera() {return [...objects.entries()].find(([k, v]) => v === camera)?.[0];}
 
         setObject(args) {
           let data;
