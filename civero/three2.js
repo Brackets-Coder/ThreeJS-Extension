@@ -33,6 +33,7 @@
 
   let objects = new Map();
   let geometries = new Map();
+  let materials = new Map();
 
   const setupThree = () => {
     const renderer = new THREE.WebGLRenderer({
@@ -368,6 +369,9 @@
 
               "---",
 
+              {blockType: "label",
+              text: Scratch.translate("Geometries")},
+
               {
                 opcode: "createGeometry",
                 blockType: Scratch.BlockType.COMMAND,
@@ -387,6 +391,33 @@
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "geometryProperties", defaultValue: "position"},
                   DATA: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,0,0] [0,1,0] [1,0,0]"}, // how would we divide it? an array with v3 arrays? (better visual) or, separated: 0,0,0,0,1,0,1,0,0 - civ
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "cube" },
+                },
+              },
+
+              "---",
+
+              {blockType: "label",
+              text: Scratch.translate("Materials")},
+
+              {
+                opcode: "createMaterial",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "create [TYPE] material named [NAME]",
+                color1: "#48A9A6",
+                arguments: {
+                  TYPE: { type: Scratch.ArgumentType.STRING, menu: "materialType" },
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "red" },
+                },
+              },
+              {
+                opcode: "setMaterial",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "set material [NAME] [PROPERTY] to [DATA]",
+                color1: "#48A9A6",
+                arguments: {
+                  PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "materialProperties", defaultValue: "color"},
+                  DATA: { type: Scratch.ArgumentType.STRING, defaultValue: "#ff0000"},
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "red" },
                 },
               },
 
@@ -478,11 +509,8 @@
                 ]
               },
               meshProperties: { items: [
-                {
-                  text: "Geometry",
-                  value: "geometry"
-                }
-                //material and +++
+                {text: "Geometry", value: "geometry"},
+                {text: "Material", value: "material"},
               ]},
               geometryType: { items: [
                 {text: "Empty", value: "BufferGeometry"},
@@ -517,6 +545,20 @@
                   value: "index"
                 },
   */              
+              ]},
+              materialType: { items: [
+                {text: Scratch.translate("mesh basic"), value: "MeshBasicMaterial"},
+                {text: Scratch.translate("mesh standard"), value: "MeshStandardMaterial"},
+                {text: Scratch.translate("mesh normal"), value: "MeshNormalMaterial"},
+                {text: Scratch.translate("mesh toon"), value: "MeshToonMaterial"},
+                {text: Scratch.translate("mesh depth"), value: "MeshDepthMaterial"},
+                {text: Scratch.translate("mesh physical"), value: "MeshPhysicalMaterial"},
+                {text: Scratch.translate("mesh phong"), value: "MeshPhongMaterial"},
+                {text: Scratch.translate("mesh lambert"), value: "MeshLambertMaterial"},
+                {text: Scratch.translate("mesh matcap"), value: "MeshMatcapMaterial"},
+              ]},
+              materialProperties: { items: [
+                {text: Scratch.translate("color"), value: "color"},
               ]},
               rendererProperties: { items: ["autoClear", "autoClearColor", "autoClearDepth"] },
               sceneProperties: {items: [
@@ -568,7 +610,7 @@
 
         getTransform({ XYZ, TRANSFORM, OBJECT }) {
           if (objects.get(OBJECT))
-            return objects?.get(OBJECT)[TRANSFORM][XYZ];
+            return objects?.get(OBJECT)[TRANSFORM][XYZ]; //for rotation, its in quaternions not eulers! And, the order of execution doesnt matter, since its defined to be XYZ (modifiable) -- Civ!
         }
 
         setTransform(args) {
@@ -649,7 +691,9 @@
               data = geometries.get(args.DATA);
               obj.geometry = data;
               break;
-            //materials...
+            case "material":
+              data = materials.get(args.DATA);
+              obj.material = data;
           }
         }
 
@@ -673,9 +717,23 @@
               break;
           }
 
-          //args.PROPERTY == "index" ?
-          //geometry.setIndex(data) :
           geometry.setAttribute(args.PROPERTY, new THREE.BufferAttribute(new Float32Array(data), dataLength));
+        }
+
+        createMaterial(args) {
+          const material = new THREE[args.TYPE]();
+            materials.set(args.NAME, material);
+        }
+
+        setMaterial(args) {
+          const material = materials.get(args.NAME);
+          
+          switch (args.PROPERTY) {
+            case "color": 
+              material.color = new THREE.Color(args.DATA);
+              break;
+            default: material[args.PROPERTY] = args.DATA;
+          }
         }
 
       }
