@@ -38,7 +38,7 @@
   const setupThree = () => {
     const renderer = new THREE.WebGLRenderer({
       preserveDrawingBuffer: true,
-      antialias: true,
+      antialias: false,
       alpha: true,
     });
     const context = renderer.getContext();
@@ -218,11 +218,8 @@
     const originalHQP = Scratch.vm.renderer.setUseHighQualityRender;
     Scratch.vm.renderer.setUseHighQualityRender = function(state) {
       originalHQP.call(Scratch.vm.renderer, state);
-      
       console.log("HQP toggled!");
     };
-
-    loop(); //autostart? Not working every the time... why? - Civ
   }
 
   const loop = () => {
@@ -403,7 +400,7 @@
                 opcode: "createMaterial",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "create [TYPE] material named [NAME]",
-                color1: "#48A9A6",
+                color1: "#8c48a9",
                 arguments: {
                   TYPE: { type: Scratch.ArgumentType.STRING, menu: "materialType" },
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "red" },
@@ -413,7 +410,7 @@
                 opcode: "setMaterial",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "set material [NAME] [PROPERTY] to [DATA]",
-                color1: "#48A9A6",
+                color1: "#8c48a9",
                 arguments: {
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "materialProperties", defaultValue: "color"},
                   DATA: { type: Scratch.ArgumentType.STRING, defaultValue: "#ff0000"},
@@ -547,18 +544,28 @@
   */              
               ]},
               materialType: { items: [
-                {text: Scratch.translate("mesh basic"), value: "MeshBasicMaterial"},
-                {text: Scratch.translate("mesh standard"), value: "MeshStandardMaterial"},
-                {text: Scratch.translate("mesh normal"), value: "MeshNormalMaterial"},
-                {text: Scratch.translate("mesh toon"), value: "MeshToonMaterial"},
-                {text: Scratch.translate("mesh depth"), value: "MeshDepthMaterial"},
-                {text: Scratch.translate("mesh physical"), value: "MeshPhysicalMaterial"},
-                {text: Scratch.translate("mesh phong"), value: "MeshPhongMaterial"},
-                {text: Scratch.translate("mesh lambert"), value: "MeshLambertMaterial"},
-                {text: Scratch.translate("mesh matcap"), value: "MeshMatcapMaterial"},
+                {text: Scratch.translate("Mesh Basic"), value: "MeshBasicMaterial"},
+                {text: Scratch.translate("Mesh Standard"), value: "MeshStandardMaterial"},
+                {text: Scratch.translate("Mesh Normal"), value: "MeshNormalMaterial"},
+                {text: Scratch.translate("Mesh Toon"), value: "MeshToonMaterial"},
+                {text: Scratch.translate("Mesh Depth"), value: "MeshDepthMaterial"},
+                {text: Scratch.translate("Mesh Physical"), value: "MeshPhysicalMaterial"},
+                {text: Scratch.translate("Mesh Phong"), value: "MeshPhongMaterial"},
+                {text: Scratch.translate("Mesh Lambert"), value: "MeshLambertMaterial"},
+                {text: Scratch.translate("Mesh Matcap"), value: "MeshMatcapMaterial"},
+
+                {text: Scratch.translate("Line Basic"), value: "LineBasicMaterial"},
+                {text: Scratch.translate("Line Dashed"), value: "LineDashedMaterial"},
+
+                {text: Scratch.translate("Points"), value: "PointsMaterial"},
+
+                {text: Scratch.translate("Sprite"), value: "SpriteMaterial"},
+
+                {text: Scratch.translate("Shadow"), value: "ShadowMaterial"},
               ]},
               materialProperties: { items: [
                 {text: Scratch.translate("color"), value: "color"},
+                {text: Scratch.translate("Map"), value: "map"},
               ]},
               rendererProperties: { items: ["autoClear", "autoClearColor", "autoClearDepth"] },
               sceneProperties: {items: [
@@ -579,29 +586,28 @@
         reset(args) {
           switch (args.VALUE) {
             case 0:
-              scene.traverse((object) => {
-                if (!object.isMesh) return;
-
-                object.geometry.dispose();
-
-                if (object.material.isMaterial) {
-                  this.cleanMaterial(object.material);
-                } else {
-                  for (const material of object.material) this.cleanMaterial(material);
-                }
-              });
+              geometries.forEach(
+                o => o.dispose()
+              );
+              materials.forEach(
+                o => o.dispose()
+              );
 
               objects.clear();
+              geometries.clear();
+              materials.clear();
 
               scene = new THREE.Scene();
               camera = new THREE.PerspectiveCamera(90, width/height);
               camera.position.z = 4;
               objects.set("camera", camera);
           }
+
+          three.renderer.clear();
         }
 
         stats(args) {
-          return three.renderer.info[args.VALUE]; //.render.calls;
+          return three.renderer.info[args.VALUE];
         }
 
         renderer(args) {
@@ -739,6 +745,8 @@
       }
 
       Scratch.extensions.register(new ThreeJS());
+      loopId = requestAnimationFrame(loop);
+      loop();
 
     })
 
