@@ -572,7 +572,7 @@
                 {text: Scratch.translate("background"), value: "background"}
               ]},
               reset: {items: [
-                {text: Scratch.translate("everything"), value: 0}
+                {text: Scratch.translate("everything"), value: "everything"}
               ]},
               stats: {items: [
                 {text: Scratch.translate("memory"), value: "memory"},
@@ -585,7 +585,14 @@
 
         reset(args) {
           switch (args.VALUE) {
-            case 0:
+            case "everything":
+              scene.children.forEach(
+                o => {
+                  o.geometry ? o.geometry.dispose() : null;
+                  o.material ? o.material.dispose() : null;
+                  o.removeFromParent();
+                }
+              );
               geometries.forEach(
                 o => o.dispose()
               );
@@ -596,10 +603,9 @@
               objects.clear();
               geometries.clear();
               materials.clear();
-
               scene = new THREE.Scene();
               camera = new THREE.PerspectiveCamera(90, width/height);
-              camera.position.z = 4;
+              camera.position.z = 2;
               objects.set("camera", camera);
           }
 
@@ -704,7 +710,12 @@
         }
 
         createGeometry(args) {
-         const geometry = new THREE[args.TYPE]();
+          let geometry = geometries.get(args.NAME);
+          if (geometry) {
+            console.warn(`Already existing geometry named "${args.NAME}". Will replace!`);
+            geometry.dispose();
+          }
+          geometry = new THREE[args.TYPE]();
           geometries.set(args.NAME, geometry);
         }
 
@@ -727,8 +738,13 @@
         }
 
         createMaterial(args) {
-          const material = new THREE[args.TYPE]();
-            materials.set(args.NAME, material);
+          let material = materials.get(args.NAME);
+          if (material) {
+            console.warn(`Already existing material named "${args.NAME}". Will replace!`);
+            material.dispose();
+          }
+          material = new THREE[args.TYPE]();
+          materials.set(args.NAME, material);
         }
 
         setMaterial(args) {
