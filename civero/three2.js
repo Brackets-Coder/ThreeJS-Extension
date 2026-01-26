@@ -303,6 +303,19 @@
               },
 
               "---",
+
+              {
+                opcode: "scene",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "set scene [PROPERTY] to [VALUE]",
+                color1: "#0F4C5C",
+                arguments: {
+                  PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "sceneProperties" },
+                  VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "#222222" },
+                },
+              },
+
+              "---",
               {blockType: "label",
               text: Scratch.translate("Objects")},
 
@@ -447,62 +460,28 @@
               XYZ: { items: ["x", "y", "z"] },
               transformType: {
                 items: [
-                  {
-                    text: Scratch.translate("position"),
-                    value: "position",
-                  },
-                  {
-                    text: Scratch.translate("rotation"),
-                    value: "rotation",
-                  },
-                  {
-                    text: Scratch.translate("scale"),
-                    value: "scale",
-                  },
+                  {text: Scratch.translate("position"), value: "position"},
+                  {text: Scratch.translate("rotation"), value: "rotation"},
+                  {text: Scratch.translate("scale"), value: "scale"},
                 ]
               },
               objectType: {
                 items: [
-                  {
-                    text: Scratch.translate("Mesh"),
-                    value: "Mesh",
-                  },
-                  {
-                    text: Scratch.translate("Perspective Camera"),
-                    value: "PerspectiveCamera"
-                  },
-                  {
-                    text: Scratch.translate("Orthographic Camera"),
-                    value: "OrthographicCamera"
-                  },
-                  {
-                    text: Scratch.translate("Sprite"),
-                    value: "Sprite",
-                  },
-                  {
-                    text: Scratch.translate("Group"),
-                    value: "Group",
-                  },
-                  {
-                    text: Scratch.translate("Points"),
-                    value: "Points",
-                  },
-                  {
-                    text: Scratch.translate("Lines"),
-                    value: "Lines",
-                  },
-                  {
-                    text: Scratch.translate("Point Light"),
-                    value: "PointLight",
-                  },
-                  {
-                    text: Scratch.translate("Directional Light"),
-                    value: "DirectionalLight",
-                  },
-                  {
-                    text: Scratch.translate("more!"),
-                    value: "more!",
-                  },
+                  {text: Scratch.translate("Mesh"), value: "Mesh"},
+                  {text: Scratch.translate("Sprite"), value: "Sprite"},
+                  {text: Scratch.translate("Points"), value: "Points"},
+                  {text: Scratch.translate("Lines"), value: "Lines"},
+                  {text: Scratch.translate("Group"), value: "Group"},
+
+                  {text: Scratch.translate("Ambient Light"), value: "AmbientlLight"},
+                  {text: Scratch.translate("Point Light"), value: "PointLight"},
+                  {text: Scratch.translate("Directional Light"), value: "DirectionalLight"},
+                  {text: Scratch.translate("Hemisphere Light"), value: "HemisphereLight"},
+                  {text: Scratch.translate("Spot Light"), value: "SpotLight"},
+
+                  {text: Scratch.translate("Perspective Camera"), value: "PerspectiveCamera"},
+                  {text: Scratch.translate("Orthographic Camera"), value: "OrthographicCamera"},
+                  {text: Scratch.translate("Cube Camera"), value: "CubeCamera"},
                 ]
               },
               meshProperties: { items: [
@@ -525,23 +504,9 @@
                 {text: "Torus Knot", value: "TorusKnotGeometry"},
               ]},
               geometryProperties: { items: [
-                {
-                  text: "Vertex points [XYZ]",
-                  value: "position"
-                },
-                {
-                  text: "Texture points [UV]",
-                  value: "uv"
-                },
-                {
-                  text: "Face points (Normals) [XYZ]",
-                  value: "normal"
-                },
-  /*            {
-                  text: "Index points",
-                  value: "index"
-                },
-  */              
+                {text: "Vertex points [XYZ]", value: "position"},
+                {text: "Texture points [UV]", value: "uv"},
+                {text: "Face points (Normals) [XYZ]", value: "normal"},
               ]},
               materialType: { items: [
                 {text: Scratch.translate("Mesh Basic"), value: "MeshBasicMaterial"},
