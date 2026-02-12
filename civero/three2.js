@@ -45,7 +45,7 @@
   const setupThree = () => {
     const renderer = new THREE.WebGLRenderer({
       preserveDrawingBuffer: true,
-      antialias: false,
+      antialias: true,
       alpha: true,
     });
     const context = renderer.getContext();
@@ -340,7 +340,7 @@
                 opcode: "deleteAsset",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "delete [TYPE] named [NAME]",
-                color1: "#695775",
+                color1: "#694D7C",
                 arguments: {
                   TYPE: { type: Scratch.ArgumentType.STRING, menu: "assetType" },
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
@@ -377,9 +377,9 @@
                 text: "set mesh [NAME] [PROPERTY] to [DATA]",
                 color1: "#5FAD56",
                 arguments: {
-                  PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "meshProperties" },
+                  PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "meshProperties", defaultValue: "material" },
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
-                  DATA: { type: Scratch.ArgumentType.STRING, defaultValue: "cube" },
+                  DATA: { type: Scratch.ArgumentType.STRING, defaultValue: "red" },
                 },
               },
 
@@ -429,6 +429,8 @@
                   OBJECT: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
                 },
               },
+
+              "---",
 
               {blockType: "label",
               text: Scratch.translate("Vectors")},
@@ -481,7 +483,7 @@
                 opcode: "createGeometry",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "create [TYPE] geometry named [NAME]",
-                color1: "#695775",
+                color1: "#C84630",
                 arguments: {
                   TYPE: { type: Scratch.ArgumentType.STRING, menu: "geometryType", defaultValue: "BoxGeometry" },
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "cube" },
@@ -491,10 +493,10 @@
                 opcode: "setGeometry",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "set geometry [NAME] [PROPERTY] to [DATA]",
-                color1: "#695775",
+                color1: "#C84630",
                 arguments: {
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "geometryProperties", defaultValue: "position"},
-                  DATA: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,0,0] [0,1,0] [1,0,0]"}, // how would we divide it? an array with v3 arrays? (better visual) or, separated: 0,0,0,0,1,0,1,0,0 - civ
+                  DATA: { type: Scratch.ArgumentType.STRING, defaultValue: "[-1,-1,0] [-1,1,0] [1,-1,0]"}, // how would we divide it? an array with v3 arrays? (better visual) or, separated: 0,0,0,0,1,0,1,0,0 - civ
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "cube" },
                 },
               },
@@ -508,7 +510,7 @@
                 opcode: "createMaterial",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "create [TYPE] material named [NAME]",
-                color1: "#695775",
+                color1: "#694D7C",
                 arguments: {
                   TYPE: { type: Scratch.ArgumentType.STRING, menu: "materialType" },
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "red" },
@@ -518,7 +520,7 @@
                 opcode: "setMaterial",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "set material [NAME] [PROPERTY] to [DATA]",
-                color1: "#695775",
+                color1: "#694D7C",
                 arguments: {
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "materialProperties", defaultValue: "color"},
                   DATA: { type: Scratch.ArgumentType.STRING, defaultValue: "#ff0000"},
@@ -530,11 +532,44 @@
                 opcode: "loadTexture",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "load texture from [COSTUME] as [NAME]",
-                color1: "#695775",
+                color1: "#694D7C",
                 arguments: {
                   COSTUME: { type: Scratch.ArgumentType.COSTUME},
-                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "texture"},
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "sky"},
                 },
+              },
+              {
+                opcode: "setTexture",
+                blockType: "command",
+                text: "set texture [NAME] [PROPERTY] to [VALUE]",
+                color1: "#694D7C",
+                arguments: {
+                  NAME: { type: "string", defaultValue: "sky"},
+                  PROPERTY: { type: "string", menu: "textureProperties"},
+                  VALUE: { type: "string", defaultValue: "[1,1]"},
+                }
+              },
+              {
+                opcode: "setTextureWrap",
+                blockType: "command",
+                text: "set texture [NAME] wrap U [U] V [V]",
+                color1: "#694D7C",
+                arguments: {
+                  NAME: { type: "string", defaultValue: "sky"},
+                  U: { type: "string", menu: "textureWarp"},
+                  V: { type: "string", menu: "textureWarp"},
+                }
+              },
+              {
+                opcode: "setTextureFilter",
+                blockType: "command",
+                text: "set texture [NAME] filter mag [MAG] min [MIN]",
+                color1: "#694D7C",
+                arguments: {
+                  NAME: { type: "string", defaultValue: "sky"},
+                  MAG: { type: "string", menu: "magFilter"},
+                  MIN: { type: "string", menu: "minFilter"},
+                }
               },
 
               "---",
@@ -550,17 +585,27 @@
               },
 
               {
+                opcode: "setCamera",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "set camera [NAME] [PROPERTY] to [VALUE]",
+                color1: "#5FAD56",
+                arguments: {
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "camera" },
+                  PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "cameraProperties"},
+                  VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "90"},
+                }
+              },
+
+              {
                 opcode: "setRenderingCamera",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "set rendering camera to [NAME]",
                 color1: "#5FAD56",
                 arguments: {
-                    NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "camera" },
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "camera" },
                 }
               },
             ],
-
-            // * Menus should be translated as necessary. See below for examples — Brackets
             menus: {
               
               XYZ: { items: ["x", "y", "z"] },
@@ -605,10 +650,10 @@
                 { text: Scratch.translate("Reflect"), value: "reflect" }
               ]},
               assetType: { items: [
-                {text: Scratch.translate("object"), value: "object"},
-                {text: Scratch.translate("geometry"), value: "geometry"},
-                {text: Scratch.translate("material"), value: "material"},
-                {text: Scratch.translate("texture"), value: "texture"},
+                {text: Scratch.translate("object"), value: "objects"},
+                {text: Scratch.translate("geometry"), value: "geometries"},
+                {text: Scratch.translate("material"), value: "materials"},
+                {text: Scratch.translate("texture"), value: "textures"},
               ]},
               transformType: {
                 items: [
@@ -639,6 +684,12 @@
               meshProperties: { items: [
                 { text: Scratch.translate("Geometry"), value: "geometry" },
                 { text: Scratch.translate("Material"), value: "material" }
+              ]},
+              cameraProperties: { items: [
+                { text: Scratch.translate("Fov"), value: "fov" },
+                { text: Scratch.translate("Near"), value: "near" },
+                { text: Scratch.translate("Far"), value: "far" },
+                { text: Scratch.translate("Zoom"), value: "zoom" }
               ]},
               geometryType: { items: [
                 { text: Scratch.translate("Empty"), value: "BufferGeometry" },
@@ -682,7 +733,32 @@
               ]},
               materialProperties: { items: [
                 {text: Scratch.translate("color"), value: "color"},
-                {text: Scratch.translate("Map"), value: "map"},
+                {text: Scratch.translate("texture"), value: "map"},
+              ]},
+              textureProperties: { items: [
+                { text: Scratch.translate("Repeat"), value: "repeat" },
+                { text: Scratch.translate("Center"), value: "center" },
+                { text: Scratch.translate("Offset"), value: "offset" },
+                { text: Scratch.translate("Anisotropy (Number)"), value: "anisotropy" },
+                { text: Scratch.translate("Rotation (Number)"), value: "rotation" },
+                { text: Scratch.translate("Premultiply Alpha (Boolean)"), value: "premultiplyAlpha" },
+              ]},
+              textureWarp: { items: [
+                { text: Scratch.translate("Repeat Wrapping"), value: "1000" },
+                { text: Scratch.translate("Clamp To Edge Wrapping"), value: "1001" },
+                { text: Scratch.translate("Mirrored Repeat Wrapping"), value: "1002" },
+              ]},
+              magFilter: { items: [
+                { text: Scratch.translate("Linear Filter"), value: "LinearFilter" },
+                { text: Scratch.translate("Nearest Filter"), value: "NearestFilter" }
+              ]},
+              minFilter: { items: [
+                { text: Scratch.translate("Linear Filter"), value: "LinearFilter" },
+                { text: Scratch.translate("Linear Mipmap Linear Filter"), value: "LinearMipmapLinearFilter" },
+                { text: Scratch.translate("Linear Mipmap Nearest Filter"), value: "LinearMipmapNearestFilter" },
+                { text: Scratch.translate("Nearest Filter"), value: "NearestFilter" },
+                { text: Scratch.translate("Nearest Mipmap Linear Filter"), value: "NearestMipmapLinearFilter" },
+                { text: Scratch.translate("Nearest Mipmap Nearest Filter"), value: "NearestMipmapNearestFilter" }
               ]},
               rendererProperties: { items: ["autoClear", "autoClearColor", "autoClearDepth", "sortObjects", "toneMappingExposure", "transmissionResolutionScale"] },
               clearBuffers: { items: [
@@ -759,7 +835,7 @@
           three.renderer[args.PROPERTY] = JSON.parse(args.VALUE); // is there a better way than .parse? - Civ
         }
         rendererClear(args) {
-          renderer[args.B];
+          three.renderer[args.B]();
         }
 
         scene(args) {
@@ -773,10 +849,12 @@
         }
 
         deleteAsset(args) {
-          const asset = assets[args.TYPE][args.NAME];
+          const asset = assets[args.TYPE].get(args.NAME);
+          console.log(asset, args)
           switch (args.TYPE) {
             case "objects":
               asset.removeFromParent();
+              break;
             default:  asset.dispose();
           }
            assets[args.TYPE].delete(args.NAME);
@@ -955,17 +1033,17 @@
 
         setMaterial(args) {
           const material = assets.materials.get(args.NAME);
-          
+          let r = args.DATA;
+
           switch (args.PROPERTY) {
             case "color": 
-              material.color = new THREE.Color(args.DATA);
-              break;
+              r = new THREE.Color(args.DATA); break;
             case "map":
-              const map = assets.textures.get(args.DATA);
-              material.map = map;
-              break;
-            default: material[args.PROPERTY] = args.DATA;
+              r = assets.textures.get(args.DATA); break;
           }
+
+          material[args.PROPERTY] = r;
+          material.needsUpdate = true;
         }
 
         async loadTexture(args) {
@@ -973,6 +1051,37 @@
           const texture = await three.textureLoader.loadAsync(img);
           texture.colorSpace = "srgb";
           assets.textures.set(args.NAME, texture);
+        }
+
+        setTextureWrap(args) {
+          const texture = assets.textures.get(args.NAME);
+          texture.wrapS = args.U;
+          texture.wrapT = args.V;
+          texture.needsUpdate = true;
+        }
+
+        setTextureFilter(args) {
+          const texture = assets.textures.get(args.NAME);
+          texture.mag = THREE[args.MAG];
+          texture.min = THREE[args.MIN];
+          texture.needsUpdate = true;
+        }
+
+        setTexture(args) {
+          const texture = assets.textures.get(args.NAME);
+          let r = JSON.parse(args.VALUE);
+          typeof(r) == "object" ? r = new THREE.Vector2().fromArray(r) : null;
+          texture[args.PROPERTY] = r;
+          texture.needsUpdate = true;
+        }
+
+        setCamera(args) {
+          const cam = assets.objects.get(args.NAME);
+          if (cam.isCamera) {
+            cam[args.PROPERTY] = JSON.parse(args.VALUE);
+            cam.updateProjectionMatrix();
+          } else console.error(`${args.NAME} is not a camera!`);
+          
         }
 
       }
