@@ -25,9 +25,8 @@
   let width, height;
   let lastCanvas;
 
-  //const THREE = await Scratch.external.importModule("https://cdn.jsdelivr.net/npm/three@latest/build/three.module.min.js");
-  const THREE = await import("https://cdn.jsdelivr.net/npm/three@latest/build/three.module.min.js");
-  // const THREE = await import("https://esm.sh/three@0.180.0");
+  const THREE = await import("https://esm.sh/three@0.182.0");
+  const {OrbitControls} = await import("https://esm.sh/three@0.182.0/examples/jsm/controls/OrbitControls.js");
 
   let three, loopId, clock, defaultGeo, defaultMat;
   let rawBuffer, gpuView, renderData;
@@ -38,6 +37,7 @@
     geometries: new Map(),
     materials: new Map(),
     textures: new Map(),
+    addons: new Map(),
   };
 
   const RadiansMultiplier = Math.PI/180;
@@ -48,6 +48,9 @@
       antialias: true,
       alpha: true,
     });
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
+
     const context = renderer.getContext();
     const textureLoader = new THREE.TextureLoader();
 
@@ -744,12 +747,7 @@
               "---",
 
               {blockType: "label",
-              text: Scratch.translate("Audio")},
-
-              "---",
-
-              {blockType: "label",
-              text: Scratch.translate("Sensoring (separate future extension)")},
+              text: Scratch.translate("Sensing")},
 
               {
                 opcode: "touching",
@@ -765,8 +763,23 @@
 
               "---",
 
+              {
+                opcode: "orbitControls",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "OrbitControls [MODE]",
+                arguments: {
+                  MODE: { type: Scratch.ArgumentType.STRING, menu: "boolean"},
+                }
+              },
+
               {blockType: "label",
-              text: Scratch.translate("VR (separate future extension)")},
+              text: Scratch.translate("Audio, GLB importing, Text geometry...")},
+              "---",
+
+              {blockType: "label",
+              text: Scratch.translate("Physics, VR (separate future extensions)")},
+
+              "---",
             ],
             menus: {
               
@@ -804,6 +817,7 @@
                 { text: Scratch.translate("Manhattan Distance To"), value: "manhattanDistanceTo" },
                 { text: Scratch.translate("Angle To"), value: "angleTo" },
                 { text: Scratch.translate("Cross"), value: "cross" },
+                { text: Scratch.translate("Apply Euler"), value: "applyEuler" },
                 { text: Scratch.translate("Dot"), value: "dot" },
                 { text: Scratch.translate("Min"), value: "min" },
                 { text: Scratch.translate("Max"), value: "max" },
@@ -845,7 +859,9 @@
               },
               meshProperties: { items: [
                 { text: Scratch.translate("Geometry"), value: "geometry" },
-                { text: Scratch.translate("Material"), value: "material" }
+                { text: Scratch.translate("Material"), value: "material" },
+                { text: Scratch.translate("Cast Shadow"), value: "castShadow" },
+                { text: Scratch.translate("Recive Shadow"), value: "reciveShadow" }, //independent boolean block?
               ]},
               cameraProperties: { items: [
                 { text: Scratch.translate("Fov"), value: "fov" },
@@ -1013,7 +1029,7 @@
           };
         }
 
-        openExtra() {open("https://threejs.org/docs")}
+        openExtra() {open("https://threejs.org/docs");}
 
         reset(args) {
           switch (args.VALUE) {
@@ -1075,7 +1091,6 @@
 
         deleteAsset(args) {
           const asset = assets[args.TYPE].get(args.NAME);
-          console.error("not found");
           switch (args.TYPE) {
             case "objects":
               asset.removeFromParent();
@@ -1126,7 +1141,8 @@
         operate2Vector(args) {
           const v1 = new THREE.Vector3().fromArray(JSON.parse(args.V1));
           let v2 = JSON.parse(args.V2);
-          typeof(v2) == "number" ? null : v2 = new THREE.Vector3().fromArray(v2);
+          if (args.OPERATION == "applyEuler") v2 = new THREE.Euler().fromArray(v2);
+          else typeof(v2) == "number" ? null : v2 = new THREE.Vector3().fromArray(v2);
           let r = v1[args.OPERATION](v2);
           typeof(r) == "object" ? r = r.toArray() : null;
           return JSON.stringify(r);
@@ -1148,12 +1164,6 @@
           const v2 = new THREE.Vector3().fromArray(JSON.parse(args.V2));
           const r = v1.lerp(v2, args.A/100);
           return JSON.stringify(r.toArray());
-        }
-
-        createMesh(args){
-          //* is this supposed to be assets.objects.get(args.GEOMETRY) instead of get(GEOMETRY)? I updated it for you. - Brackets
-          //im unsure about this block. we can create an empty mesh with addObject(). Then assign a material and a geometry to it. - Civero
-          assets.objects.set(args.NAME, new THREE.Mesh(assets.objects.get(args.GEOMETRY), assets.objects.get(args.MATERIAL)));
         }
 
         addObject(args) {
@@ -1189,6 +1199,11 @@
               break;
           }
 
+          if (!obj.isLight || obj.shadow) {
+            obj.castShadow = true;
+            obj.receiveShadow = true;
+          }
+          
           if (args.PARENT == "scene") {
             scene.add(obj);
           } else if (!parent) { //should search in another map for scenes with that name (future) - Civ
@@ -1358,6 +1373,13 @@
           let b = new THREE.Box3().setFromObject( assets.objects.get(args.B) );
 
           return a.intersectsBox(b);
+        }
+
+        orbitControls(args) {
+          const oc = assets.addons.get("orbitControls");
+          if (JSON.parse(args.MODE)) {
+            oc ? null : assets.addons.set("orbitControls", new OrbitControls(camera, renderer.canvas));
+          } else { oc.disconnect(); oc.reset(); }
         }
         
 
