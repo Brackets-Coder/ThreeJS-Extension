@@ -191,7 +191,7 @@
 
     defaultGeo = new THREE.BoxGeometry();
     defaultMat = new THREE.MeshBasicMaterial();
-    defaultMat.map = await three.textureLoader.loadAsync('data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHdpZHRoPSIyOTciIGhlaWdodD0iMjk3IiB2aWV3Qm94PSIwLDAsMjk3LDI5NyI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTkxLjUsLTMxLjUpIj48ZyBzdHJva2U9Im5vbmUiIHN0cm9rZS1taXRlcmxpbWl0PSIxMCI+PHBhdGggZD0iTTM4OC41LDMxLjVsMCwyOTdsLTI5NywwbDAsLTI5N3oiIGZpbGw9IiM2NjY2NjYiIHN0cm9rZS13aWR0aD0iMCIvPjxwYXRoIGQ9Ik05MS41LDMyOC41di0xNDguNWgxNDguNXYxNDguNXoiIGZpbGw9IiM5OTk5OTkiIHN0cm9rZS13aWR0aD0iMCIvPjxwYXRoIGQ9Ik0yNDAsMTgwdi0xNDguNWgxNDguNXYxNDguNXoiIGZpbGw9IiM5OTk5OTkiIHN0cm9rZS13aWR0aD0iMCIvPjx0ZXh0IHRyYW5zZm9ybT0idHJhbnNsYXRlKDEwMy45OTEyMSwzMDMuODIxNTYpIHNjYWxlKDEuMjIwMTksMS4yMjAxOSkiIGZvbnQtc2l6ZT0iNDAiIHhtbDpzcGFjZT0icHJlc2VydmUiIGZpbGw9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iMSIgZm9udC1mYW1pbHk9IlNlcmlmIiBmb250LXdlaWdodD0ibm9ybWFsIiB0ZXh0LWFuY2hvcj0ic3RhcnQiPjx0c3BhbiB4PSIwIiBkeT0iMCI+bm8gbWF0ZXJpYWw8L3RzcGFuPjwvdGV4dD48dGV4dCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgzNzYuMDA5MDgsNTYuMTc4MzgpIHJvdGF0ZSgtMTgwKSBzY2FsZSgxLjIyMDIsMS4yMjAyKSIgZm9udC1zaXplPSI0MCIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSIgZmlsbD0iIzAwMDAwMCIgc3Ryb2tlLXdpZHRoPSIxIiBmb250LWZhbWlseT0iU2VyaWYiIGZvbnQtd2VpZ2h0PSJub3JtYWwiIHRleHQtYW5jaG9yPSJzdGFydCI+PHRzcGFuIHg9IjAiIGR5PSIwIj5ubyBtYXRlcmlhbDwvdHNwYW4+PC90ZXh0PjwvZz48L2c+PC9zdmc+');
+    defaultMat.map = await three.textureLoader.loadAsync(`data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHdpZHRoPSIyODMiIGhlaWdodD0iMjgzIiB2aWV3Qm94PSIwLDAsMjgzLDI4MyI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTk5LjQ0ODk1LC0zOS4xMTMzNSkiPjxnIHN0cm9rZT0ibm9uZSIgc3Ryb2tlLW1pdGVybGltaXQ9IjEwIj48cGF0aCBkPSJNMzgyLjQ0ODk1LDM5LjExMzM1djI4M2gtMjgzdi0yODN6IiBmaWxsPSIjNjY2NjY2IiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJNMTkzLjc4MjI4LDM5LjExMzM1djk0LjMzMzMzaC05NC4zMzMzM3YtOTQuMzMzMzN6IiBmaWxsPSIjOTk5OTk5IiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJNMzgyLjQ0ODk1LDM5LjExMzM1djk0LjMzMzMzaC05NC4zMzMzM3YtOTQuMzMzMzN6IiBmaWxsPSIjOTk5OTk5IiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJNMTkzLjc4MjI5LDIyNy43ODAwMnY5NC4zMzMzM2gtOTQuMzMzMzN2LTk0LjMzMzMzeiIgZmlsbD0iIzk5OTk5OSIgc3Ryb2tlLXdpZHRoPSIwIi8+PHBhdGggZD0iTTI4Ny4xNjY2NiwxMzIuODMzMzR2OTQuMzMzMzNoLTk0LjMzMzMzdi05NC4zMzMzM3oiIGZpbGw9IiM5OTk5OTkiIHN0cm9rZS13aWR0aD0iMCIvPjxwYXRoIGQ9Ik0zODIuNDQ4OTUsMjI3Ljc4MDAydjk0LjMzMzMzaC05NC4zMzMzNHYtOTQuMzMzMzN6IiBmaWxsPSIjOTk5OTk5IiBzdHJva2Utd2lkdGg9IjAiLz48dGV4dCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxMDUuNSwzMDIuMjg2OTMpIHNjYWxlKDAuNzc2NDgsMC43NzY0OCkiIGZvbnQtc2l6ZT0iNDAiIHhtbDpzcGFjZT0icHJlc2VydmUiIGZpbGw9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iMSIgZm9udC1mYW1pbHk9IlNlcmlmIiBmb250LXdlaWdodD0ibm9ybWFsIiB0ZXh0LWFuY2hvcj0ic3RhcnQiPjx0c3BhbiB4PSIwIiBkeT0iMCI+bm8gbWF0ZXJpYWw8L3RzcGFuPjwvdGV4dD48dGV4dCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgzNzQuNSw1Ny43MTMxNSkgcm90YXRlKC0xODApIHNjYWxlKDAuNzc2NDksMC43NzY0OSkiIGZvbnQtc2l6ZT0iNDAiIHhtbDpzcGFjZT0icHJlc2VydmUiIGZpbGw9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iMSIgZm9udC1mYW1pbHk9IlNlcmlmIiBmb250LXdlaWdodD0ibm9ybWFsIiB0ZXh0LWFuY2hvcj0ic3RhcnQiPjx0c3BhbiB4PSIwIiBkeT0iMCI+bm8gbWF0ZXJpYWw8L3RzcGFuPjwvdGV4dD48L2c+PC9nPjwvc3ZnPg==`);
     defaultMat.map.colorSpace = "srgb";
 
     window._ThreeJS_ = {
@@ -1050,11 +1050,13 @@
               assets.textures.forEach(
                 o => o.dispose()
               );
+              assets.addons.get("orbitControls") ? assets.addons.get("orbitControls").dispose() : null;
 
               assets.objects.clear();
               assets.geometries.clear();
               assets.materials.clear();
               assets.textures.clear();
+              assets.addons.clear();
               scene = new THREE.Scene();
               camera = new THREE.PerspectiveCamera(90, width/height);
               camera.position.z = 2;
@@ -1378,7 +1380,7 @@
         orbitControls(args) {
           const oc = assets.addons.get("orbitControls");
           if (JSON.parse(args.MODE)) {
-            oc ? null : assets.addons.set("orbitControls", new OrbitControls(camera, renderer.canvas));
+            oc ? oc.connect(renderer.canvas) : assets.addons.set("orbitControls", new OrbitControls(camera, renderer.canvas));
           } else { oc.disconnect(); oc.reset(); }
         }
         
