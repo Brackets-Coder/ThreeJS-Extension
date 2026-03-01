@@ -22,11 +22,17 @@
   const renderer = vm.renderer;
   const runtime = vm.runtime;
 
+  const extensionID = "threejsextensionciveroversion";
+
   let width, height;
   let lastCanvas;
 
   const THREE = await import("https://esm.sh/three@0.182.0");
+  const {TextGeometry} = await import ("https://esm.sh/three@0.182.0/addons/geometries/TextGeometry.js");
   const {OrbitControls} = await import("https://esm.sh/three@0.182.0/examples/jsm/controls/OrbitControls.js");
+  const {GLTFLoader} = await import("https://esm.sh/three@0.182.0/addons/loaders/GLTFLoader.js");
+  const {FontLoader} = await import ("https://esm.sh/three@0.182.0/addons/loaders/FontLoader.js");
+  let opentype;
 
   let three, loopId, clock, defaultGeo, defaultMat;
   let rawBuffer, gpuView, renderData;
@@ -40,8 +46,6 @@
     addons: new Map(),
   };
 
-  const RadiansMultiplier = Math.PI/180;
-
   const setupThree = () => {
     const renderer = new THREE.WebGLRenderer({
       preserveDrawingBuffer: true,
@@ -52,9 +56,12 @@
     renderer.shadowMap.type = THREE.PCFShadowMap;
 
     const context = renderer.getContext();
-    const textureLoader = new THREE.TextureLoader();
+    const TextureLoader = new THREE.TextureLoader();
+    const ModelLoader = new GLTFLoader();
+    const TextLoader = new FontLoader();
+    const MathUtils = THREE.MathUtils;
 
-    return { renderer, context, textureLoader };
+    return { renderer, context, TextureLoader, ModelLoader, MathUtils, TextLoader };
   };
 
   const setupSkin = () => {
@@ -190,9 +197,12 @@
     clock = new THREE.Clock();
 
     defaultGeo = new THREE.BoxGeometry();
-    defaultMat = new THREE.MeshBasicMaterial();
-    defaultMat.map = await three.textureLoader.loadAsync(`data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHdpZHRoPSIyODMiIGhlaWdodD0iMjgzIiB2aWV3Qm94PSIwLDAsMjgzLDI4MyI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTk5LjQ0ODk1LC0zOS4xMTMzNSkiPjxnIHN0cm9rZT0ibm9uZSIgc3Ryb2tlLW1pdGVybGltaXQ9IjEwIj48cGF0aCBkPSJNMzgyLjQ0ODk1LDM5LjExMzM1djI4M2gtMjgzdi0yODN6IiBmaWxsPSIjNjY2NjY2IiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJNMTkzLjc4MjI4LDM5LjExMzM1djk0LjMzMzMzaC05NC4zMzMzM3YtOTQuMzMzMzN6IiBmaWxsPSIjOTk5OTk5IiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJNMzgyLjQ0ODk1LDM5LjExMzM1djk0LjMzMzMzaC05NC4zMzMzM3YtOTQuMzMzMzN6IiBmaWxsPSIjOTk5OTk5IiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJNMTkzLjc4MjI5LDIyNy43ODAwMnY5NC4zMzMzM2gtOTQuMzMzMzN2LTk0LjMzMzMzeiIgZmlsbD0iIzk5OTk5OSIgc3Ryb2tlLXdpZHRoPSIwIi8+PHBhdGggZD0iTTI4Ny4xNjY2NiwxMzIuODMzMzR2OTQuMzMzMzNoLTk0LjMzMzMzdi05NC4zMzMzM3oiIGZpbGw9IiM5OTk5OTkiIHN0cm9rZS13aWR0aD0iMCIvPjxwYXRoIGQ9Ik0zODIuNDQ4OTUsMjI3Ljc4MDAydjk0LjMzMzMzaC05NC4zMzMzNHYtOTQuMzMzMzN6IiBmaWxsPSIjOTk5OTk5IiBzdHJva2Utd2lkdGg9IjAiLz48dGV4dCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxMDUuNSwzMDIuMjg2OTMpIHNjYWxlKDAuNzc2NDgsMC43NzY0OCkiIGZvbnQtc2l6ZT0iNDAiIHhtbDpzcGFjZT0icHJlc2VydmUiIGZpbGw9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iMSIgZm9udC1mYW1pbHk9IlNlcmlmIiBmb250LXdlaWdodD0ibm9ybWFsIiB0ZXh0LWFuY2hvcj0ic3RhcnQiPjx0c3BhbiB4PSIwIiBkeT0iMCI+bm8gbWF0ZXJpYWw8L3RzcGFuPjwvdGV4dD48dGV4dCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgzNzQuNSw1Ny43MTMxNSkgcm90YXRlKC0xODApIHNjYWxlKDAuNzc2NDksMC43NzY0OSkiIGZvbnQtc2l6ZT0iNDAiIHhtbDpzcGFjZT0icHJlc2VydmUiIGZpbGw9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iMSIgZm9udC1mYW1pbHk9IlNlcmlmIiBmb250LXdlaWdodD0ibm9ybWFsIiB0ZXh0LWFuY2hvcj0ic3RhcnQiPjx0c3BhbiB4PSIwIiBkeT0iMCI+bm8gbWF0ZXJpYWw8L3RzcGFuPjwvdGV4dD48L2c+PC9nPjwvc3ZnPg==`);
+    defaultMat = new THREE.MeshMatcapMaterial();
+    defaultMat.map = await three.TextureLoader.loadAsync(`data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHdpZHRoPSIyODMiIGhlaWdodD0iMjgzIiB2aWV3Qm94PSIwLDAsMjgzLDI4MyI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTk5LjQ0ODk1LC0zOS4xMTMzNSkiPjxnIHN0cm9rZT0ibm9uZSIgc3Ryb2tlLW1pdGVybGltaXQ9IjEwIj48cGF0aCBkPSJNMzgyLjQ0ODk1LDM5LjExMzM1djI4M2gtMjgzdi0yODN6IiBmaWxsPSIjNjY2NjY2IiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJNMTkzLjc4MjI4LDM5LjExMzM1djk0LjMzMzMzaC05NC4zMzMzM3YtOTQuMzMzMzN6IiBmaWxsPSIjOTk5OTk5IiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJNMzgyLjQ0ODk1LDM5LjExMzM1djk0LjMzMzMzaC05NC4zMzMzM3YtOTQuMzMzMzN6IiBmaWxsPSIjOTk5OTk5IiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJNMTkzLjc4MjI5LDIyNy43ODAwMnY5NC4zMzMzM2gtOTQuMzMzMzN2LTk0LjMzMzMzeiIgZmlsbD0iIzk5OTk5OSIgc3Ryb2tlLXdpZHRoPSIwIi8+PHBhdGggZD0iTTI4Ny4xNjY2NiwxMzIuODMzMzR2OTQuMzMzMzNoLTk0LjMzMzMzdi05NC4zMzMzM3oiIGZpbGw9IiM5OTk5OTkiIHN0cm9rZS13aWR0aD0iMCIvPjxwYXRoIGQ9Ik0zODIuNDQ4OTUsMjI3Ljc4MDAydjk0LjMzMzMzaC05NC4zMzMzNHYtOTQuMzMzMzN6IiBmaWxsPSIjOTk5OTk5IiBzdHJva2Utd2lkdGg9IjAiLz48dGV4dCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxMDUuNSwzMDIuMjg2OTMpIHNjYWxlKDAuNzc2NDgsMC43NzY0OCkiIGZvbnQtc2l6ZT0iNDAiIHhtbDpzcGFjZT0icHJlc2VydmUiIGZpbGw9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iMSIgZm9udC1mYW1pbHk9IlNlcmlmIiBmb250LXdlaWdodD0ibm9ybWFsIiB0ZXh0LWFuY2hvcj0ic3RhcnQiPjx0c3BhbiB4PSIwIiBkeT0iMCI+bm8gbWF0ZXJpYWw8L3RzcGFuPjwvdGV4dD48dGV4dCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgzNzQuNSw1Ny43MTMxNSkgcm90YXRlKC0xODApIHNjYWxlKDAuNzc2NDksMC43NzY0OSkiIGZvbnQtc2l6ZT0iNDAiIHhtbDpzcGFjZT0icHJlc2VydmUiIGZpbGw9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iMSIgZm9udC1mYW1pbHk9IlNlcmlmIiBmb250LXdlaWdodD0ibm9ybWFsIiB0ZXh0LWFuY2hvcj0ic3RhcnQiPjx0c3BhbiB4PSIwIiBkeT0iMCI+bm8gbWF0ZXJpYWw8L3RzcGFuPjwvdGV4dD48L2c+PC9nPjwvc3ZnPg==`);
+    defaultMat.map.wrapS = 1000;
+    defaultMat.map.wrapT = 1000;
     defaultMat.map.colorSpace = "srgb";
+    defaultMat.map.needsUpdate = true;
 
     window._ThreeJS_ = {
       THREE: THREE,
@@ -226,6 +236,7 @@
         cancelAnimationFrame(loopId);
         loopId = null;
       }
+      three.renderer.clear();
     });
 
     const originalHQP = Scratch.vm.renderer.setUseHighQualityRender;
@@ -267,13 +278,35 @@
     render();
   };
 
+  async function requestFile(format) {
+    const file = await new Promise((resolve) => {
+      const input = document.createElement("input");
+        input.type = "file";
+        input.accept = format;
+        input.multiple = false;
+        input.onchange = () => {
+          resolve(input.files);
+          input.remove();
+        };
+        input.click();
+    });
+
+    const url = await new Promise((resolve) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.readAsDataURL(file[0]);
+    });
+
+    return {name: file[0].name, url: url};
+  }
+
   Promise.resolve(init())
     .then(() => {
 
       class ThreeJS {
         getInfo() {
           return {
-            id: "turboJScivmod",
+            id: extensionID,
             name: "ThreeJS",
             color1: "#4D5061",
             color2: "#30323D",
@@ -292,17 +325,31 @@
                 opcode: "reset",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "reset [VALUE]",
+                color1: "#C84630",
                 arguments: {
                   VALUE: { type: Scratch.ArgumentType.STRING, menu: "reset" },
                 },
               },
               {
                 opcode: "stats",
+                color1: "#C84630",
                 blockType: Scratch.BlockType.REPORTER,
                 text: "get [VALUE]",
                 disableMonitor: true,
                 arguments: {
                   VALUE: { type: Scratch.ArgumentType.STRING, menu: "stats" },
+                },
+              },
+
+              "---",
+              {
+                opcode: "deleteAsset",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "delete [TYPE] named [NAME]",
+                color1: "#C84630",
+                arguments: {
+                  TYPE: { type: Scratch.ArgumentType.STRING, menu: "assetType" },
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
                 },
               },
 
@@ -314,8 +361,14 @@
                 text: "set renderer [PROPERTY] to [VALUE]",
                 arguments: {
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "rendererProperties" },
-                  VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "false" },
+                  VALUE: { type: Scratch.ArgumentType.STRING, menu: "boolean" },
                 },
+              },
+
+              {
+                opcode: "rendererRender",
+                blockType: "command",
+                text: "render",
               },
 
               {
@@ -333,23 +386,9 @@
                 opcode: "scene",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "set scene [PROPERTY] to [VALUE]",
-                color1: "#5FAD56",
                 arguments: {
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "sceneProperties" },
                   VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "#222222" },
-                },
-              },
-
-              "---",
-
-              {
-                opcode: "deleteAsset",
-                blockType: Scratch.BlockType.COMMAND,
-                text: "delete [TYPE] named [NAME]",
-                color1: "#694D7C",
-                arguments: {
-                  TYPE: { type: Scratch.ArgumentType.STRING, menu: "assetType" },
-                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
                 },
               },
 
@@ -380,12 +419,69 @@
               {
                 opcode: "setObject",
                 blockType: Scratch.BlockType.COMMAND,
-                text: "set mesh [NAME] [PROPERTY] to [DATA]",
+                text: "set object [NAME] [PROPERTY] to [DATA]",
                 color1: "#5FAD56",
                 arguments: {
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "meshProperties", defaultValue: "material" },
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
                   DATA: { type: Scratch.ArgumentType.STRING, defaultValue: "red" },
+                },
+              },
+
+              "---",
+
+              {
+                opcode: "createInstance",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "add instanced mesh [NAME] with geometry [GEOMETRY] material [MATERIAL] count [COUNT]",
+                color1: "#5FAD56",
+                arguments: {
+                  NAME: { type: "string", defaultValue: "forest" },
+                  GEOMETRY: { type: "string", defaultValue: "cube" },
+                  MATERIAL: { type: "string", defaultValue: "red" },
+                  COUNT: { type: "number", defaultValue: 7 },
+                },
+              },
+              {
+                opcode: "setInstance",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "set instanced mesh [NAME] item [INDEX] [PROPERTY] to [MATRIX]",
+                color1: "#5FAD56",
+                arguments: {
+                  NAME: { type: "string", defaultValue: "forest" },
+                  INDEX: { type: "number", defaultValue: 1 },
+                  PROPERTY: { type: "string", menu: "instanceItems"},
+                  MATRIX: { type: "string", defaultValue: "[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]" },
+                },
+              },
+
+              //BatchedMesh maybe?
+
+              "---",
+              
+              {
+                blockType: "button",
+                text: Scratch.translate("Import model"),
+                func: "loadModel" 
+              },
+              {
+                opcode: "addModel",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "add model [FILE] named [NAME] to [PARENT]",
+                color1: "#5FAD56",
+                arguments: {
+                  FILE: { type: "string", menu: "loadedModels" },
+                  NAME: { type: "string", defaultValue: "star destroyer" },
+                  PARENT: { type: "string", defaultValue: "scene" },
+                },
+              },
+              {
+                opcode: "removeModel",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "remove model file [FILE]",
+                color1: "#C84630",
+                arguments: {
+                  FILE: { type: "string", menu: "loadedModels" },
                 },
               },
 
@@ -431,7 +527,7 @@
                 text: "get [TRANSFORM] of object [OBJECT]",
                 color1: "#5C80BC",
                 arguments: {
-                  TRANSFORM: { type: Scratch.ArgumentType.STRING, menu: "transformType" },
+                  TRANSFORM: { type: Scratch.ArgumentType.STRING, menu: "gettransformType" },
                   OBJECT: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
                 },
               },
@@ -483,6 +579,15 @@
                 },
               },
               {
+                opcode: "getVectorProjected",
+                blockType: Scratch.BlockType.REPORTER,
+                text: "get [V] projected to stage",
+                color1: "#5C80BC",
+                arguments: {
+                  V: { type: Scratch.ArgumentType.STRING, defaultValue: "[-1,2,-4]" },
+                },
+              },
+              {
                 opcode: "operate2Vector",
                 blockType: Scratch.BlockType.REPORTER,
                 text: "get [V1] [OPERATION] [V2]",
@@ -515,6 +620,31 @@
                 },
               },
 
+              {blockType: "label",
+              text: Scratch.translate("Matrix")},
+
+              {
+                opcode: "doMatrix",
+                blockType: Scratch.BlockType.REPORTER,
+                text: "create matrix from position [POSITION] rotation [ROTATION] scale [SCALE]",
+                color1: "#5C80BC",
+                arguments: {
+                  POSITION: { type: Scratch.ArgumentType.STRING, defaultValue: "[1,0,0]" },
+                  ROTATION: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,90,0]" },
+                  SCALE: { type: Scratch.ArgumentType.STRING, defaultValue: "[1,1,1]" },
+                },
+              },
+              {
+                opcode: "getMatrixTransform",
+                blockType: Scratch.BlockType.REPORTER,
+                text: "get [TRANSFORM] of matrix [M]",
+                color1: "#5C80BC",
+                arguments: {
+                  TRANSFORM: { type: Scratch.ArgumentType.STRING, menu: "transformType" },
+                  M: { type: Scratch.ArgumentType.STRING, defaultValue: "[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]" },
+                },
+              },
+
               "---",
 
               {blockType: "label",
@@ -524,7 +654,7 @@
                 opcode: "createGeometry",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "create [TYPE] geometry named [NAME]",
-                color1: "#C84630",
+                color1: "#7c4d5e",
                 arguments: {
                   TYPE: { type: Scratch.ArgumentType.STRING, menu: "geometryType", defaultValue: "BoxGeometry" },
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "cube" },
@@ -534,11 +664,38 @@
                 opcode: "setGeometry",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "set geometry [NAME] [PROPERTY] to [DATA]",
-                color1: "#C84630",
+                color1: "#7c4d5e",
                 arguments: {
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "geometryProperties", defaultValue: "position"},
                   DATA: { type: Scratch.ArgumentType.STRING, defaultValue: "[-1,-1,0] [-1,1,0] [1,-1,0]"}, // how would we divide it? an array with v3 arrays? (better visual) or, separated: 0,0,0,0,1,0,1,0,0 - civ
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "cube" },
+                },
+              },
+              "---",
+              {
+                blockType: "button",
+                text: Scratch.translate("Import font"),
+                func: "loadFont" 
+              },
+              {
+                opcode: "createTextGeometry",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "create geometry with font [FILE] named [NAME] displaying text [TEXT] with depth [DEPTH]",
+                color1: "#7c4d5e",
+                arguments: {
+                  FILE: { type: "string", menu: "loadedFonts" },
+                  NAME: { type: "string", defaultValue: "text" },
+                  TEXT: { type: "string", defaultValue: "Cool 3D text!" },
+                  DEPTH: {type: "number", defaultValue: "1"}
+                },
+              },
+              {
+                opcode: "removeFont",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "remove font file [FILE]",
+                color1: "#C84630",
+                arguments: {
+                  FILE: { type: "string", menu: "loadedFonts" },
                 },
               },
 
@@ -601,6 +758,27 @@
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "red" },
                 },
               },
+              {
+                opcode: "setMaterialSide",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "set material [NAME] to [DATA] side rendering",
+                color1: "#694D7C",
+                arguments: {
+                  DATA: { type: Scratch.ArgumentType.STRING, menu: "materialSides"},
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "red" },
+                },
+              },
+
+              {
+                opcode: "joinMaterial",
+                blockType: Scratch.BlockType.REPORTER,
+                text: "join [MATERIAL] with [MATERIAL2]",
+                color1: "#694D7C",
+                arguments: {
+                  MATERIAL: { type: Scratch.ArgumentType.STRING, defaultValue: "red"},
+                  MATERIAL2: { type: Scratch.ArgumentType.STRING, defaultValue: "blue" },
+                },
+              },
               
 
 
@@ -609,13 +787,14 @@
               {
                 opcode: "loadTexture",
                 blockType: Scratch.BlockType.COMMAND,
-                text: "load texture from [COSTUME] as [NAME]",
+                text: "load Texture from [COSTUME] as [NAME]",
                 color1: "#694D7C",
                 arguments: {
                   COSTUME: { type: Scratch.ArgumentType.COSTUME},
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "sky"},
                 },
               },
+
               {
                 opcode: "setTexture",
                 blockType: "command",
@@ -647,6 +826,16 @@
                   NAME: { type: "string", defaultValue: "sky"},
                   MAG: { type: "string", menu: "magFilter"},
                   MIN: { type: "string", menu: "minFilter"},
+                }
+              },
+              {
+                opcode: "setTextureMapping",
+                blockType: "command",
+                text: "set texture [NAME] mapping to [VALUE]",
+                color1: "#694D7C",
+                arguments: {
+                  NAME: { type: "string", defaultValue: "sky"},
+                  VALUE: { type: "string", menu: "textureMapping"},
                 }
               },
 
@@ -693,7 +882,7 @@
                 opcode: "setLight",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "for light [NAME] set [PROPERTY] to [VALUE]",
-                color1: "#5FAD56",
+                color1: "#8a963a",
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "light" },
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "light"},
@@ -704,7 +893,7 @@
                 opcode: "setPointLight",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "for point or spot light [NAME] set [PROPERTY] to [VALUE]",
-                color1: "#5FAD56",
+                color1: "#8a963a",
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "light" },
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "pointLight", defaultValue: "distance"},
@@ -715,7 +904,7 @@
                 opcode: "setTargetLight",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "for spot or directional light [NAME] target to [VALUE]",
-                color1: "#5FAD56",
+                color1: "#8a963a",
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "light" },
                   VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,0,0]"},
@@ -725,7 +914,7 @@
                 opcode: "setSpotLight",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "for spot light [NAME] set [PROPERTY] to [VALUE]",
-                color1: "#5FAD56",
+                color1: "#8a963a",
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "light" },
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "spotLight", defaultValue: "penumbra"},
@@ -736,7 +925,7 @@
                 opcode: "setHemisphereLight",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "for hemisphere light [NAME] set [PROPERTY] to [VALUE]",
-                color1: "#5FAD56",
+                color1: "#8a963a",
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "light" },
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "hemisphereLight"},
@@ -748,12 +937,12 @@
 
               {blockType: "label",
               text: Scratch.translate("Sensing")},
-
+                //is there a way to subdivide the bounding box into multiple ones for more precicion?
               {
                 opcode: "touching",
                 blockType: Scratch.BlockType.BOOLEAN,
                 text: "is object [A] touching object [B] [MODE]?",
-                color1: "#5FAD56",
+                color1: "#569ead",
                 arguments: {
                   A: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
                   B: { type: Scratch.ArgumentType.STRING, defaultValue: "ground"},
@@ -763,6 +952,9 @@
 
               "---",
 
+              {blockType: "label",
+              text: Scratch.translate("Mesh instances, Audio, Animation importig, Text geometry...")},
+              
               {
                 opcode: "orbitControls",
                 blockType: Scratch.BlockType.COMMAND,
@@ -771,13 +963,11 @@
                   MODE: { type: Scratch.ArgumentType.STRING, menu: "boolean"},
                 }
               },
-
-              {blockType: "label",
-              text: Scratch.translate("Audio, GLB importing, Text geometry...")},
+              
               "---",
 
               {blockType: "label",
-              text: Scratch.translate("Physics, VR (separate future extensions)")},
+              text: Scratch.translate("Physics, VR, Sky, Water, Postprocesing,  Addon (separate future extensions)")},
 
               "---",
             ],
@@ -800,7 +990,7 @@
                 { text: Scratch.translate("Length"), value: "length" },
                 { text: Scratch.translate("Manhattan Length"), value: "manhattanLength" },
                 { text: Scratch.translate("Normalize"), value: "normalize" },
-                { text: Scratch.translate("Random"), value: "random" },
+                { text: Scratch.translate("Random"), value: "randomDirection" },
               ]},
               vector2Operations: { items: [
                 { text: Scratch.translate("+"), value: "add" },
@@ -838,9 +1028,19 @@
                   {text: Scratch.translate("scale"), value: "scale"},
                 ]
               },
+              gettransformType: {
+                items: [
+                  {text: Scratch.translate("position"), value: "position"},
+                  {text: Scratch.translate("rotation"), value: "rotation"},
+                  {text: Scratch.translate("scale"), value: "scale"},
+                  {text: Scratch.translate("World matrix"), value: "matrixWorld"},
+                  {text: Scratch.translate("Local matrix"), value: "matrix"},
+                ]
+              },
               objectType: {
                 items: [
                   {text: Scratch.translate("Mesh"), value: "Mesh"},
+                  {text: Scratch.translate("Instanced Mesh"), value: "InstancedMesh"},
                   {text: Scratch.translate("Sprite"), value: "Sprite"},
                   {text: Scratch.translate("Points"), value: "Points"},
                   {text: Scratch.translate("Lines"), value: "Lines"},
@@ -875,6 +1075,7 @@
                 { text: Scratch.translate("Capsule"), value: "CapsuleGeometry" },
                 { text: Scratch.translate("Circle"), value: "CircleGeometry" },
                 { text: Scratch.translate("Cone"), value: "ConeGeometry" },
+                { text: Scratch.translate("Cylinder"), value: "CylinderGeometry" },
                 { text: Scratch.translate("Dodecahedron"), value: "DodecahedronGeometry" },
                 { text: Scratch.translate("Icosahedron"), value: "IcosahedronGeometry" },
                 { text: Scratch.translate("Octahedron"), value: "OctahedronGeometry" },
@@ -954,6 +1155,11 @@
                 { text: Scratch.translate("Bump Texture"), value: "bumpMap" },
                 { text: Scratch.translate("Displacement Texture"), value: "displacementMap" }
               ]},
+              materialSides: { items: [
+                { text: Scratch.translate("Front"), value: "0" },
+                { text: Scratch.translate("Back"), value: "1" },
+                { text: Scratch.translate("Double"), value: "2" },
+              ]},
               textureProperties: { items: [
                 { text: Scratch.translate("Repeat (V2)"), value: "repeat" },
                 { text: Scratch.translate("Center (V2)"), value: "center" },
@@ -967,6 +1173,14 @@
                 { text: Scratch.translate("Clamp To Edge Wrapping"), value: "1001" },
                 { text: Scratch.translate("Mirrored Repeat Wrapping"), value: "1002" },
               ]},
+              textureMapping: { items: [
+                { text: Scratch.translate("UV Mapping (Standard)"), value: "300" },
+                { text: Scratch.translate("Cube Reflection (6 images?)"), value: "301" },
+                { text: Scratch.translate("Cube Refraction (6 images?)"), value: "302" },
+                { text: Scratch.translate("Equirectangular Reflection (no diference)"), value: "303" },
+                { text: Scratch.translate("Equirectangular Refraction"), value: "304" },
+                { text: Scratch.translate("Cube UV Reflection (errors)"), value: "306" }
+              ]},
               magFilter: { items: [
                 { text: Scratch.translate("Linear Filter (Blurred)"), value: "LinearFilter" },
                 { text: Scratch.translate("Nearest Filter (Pixelated)"), value: "NearestFilter" }
@@ -979,7 +1193,12 @@
                 { text: Scratch.translate("Nearest Mipmap Linear Filter"), value: "NearestMipmapLinearFilter" },
                 { text: Scratch.translate("Nearest Mipmap Nearest Filter"), value: "NearestMipmapNearestFilter" }
               ]},
-              rendererProperties: { items: ["autoClear", "autoClearColor", "autoClearDepth", "sortObjects", "toneMappingExposure", "transmissionResolutionScale"] },
+              rendererProperties: { items: [
+                { text: Scratch.translate("Render Scene Automatically"), value: "autoRender" },
+                { text: Scratch.translate("Clear All Automatically"), value: "autoClear" },
+                { text: Scratch.translate("Clear Color Automatically"), value: "autoClearColor" },
+                { text: Scratch.translate("Clear Depth Automatically"), value: "autoClearDepth" }
+              ] },
               clearBuffers: { items: [
                 { text: Scratch.translate("All"), value: "clear" },
                 { text: Scratch.translate("Color"), value: "clearColor" },
@@ -1017,13 +1236,31 @@
                 { text: Scratch.translate("Penumbra"), value: "penumbra" },
                 { text: Scratch.translate("Texture"), value: "map" },
               ]},
+              instanceItems: { items: [
+                { text: Scratch.translate("matrix"), value: "matrix" },
+                { text: Scratch.translate("color"), value: "color" },
+              ]},
               reset: {items: [
-                {text: Scratch.translate("everything"), value: "everything"}
+                {text: Scratch.translate("everything"), value: "everything"},
+                {text: Scratch.translate("objects"), value: "objects"},
+                {text: Scratch.translate("geometries"), value: "geometries"},
+                {text: Scratch.translate("materials"), value: "materials"},
+                {text: Scratch.translate("textures"), value: "textures"},
               ]},
               stats: {items: [
                 {text: Scratch.translate("memory"), value: "memory"},
                 {text: Scratch.translate("render"), value: "render"},
-              ]}
+              ]},
+              loadedModels: {items: () => {
+                const m = runtime.extensionStorage[extensionID].models;
+                if (Object.keys(m).length == 0) return [["Load a model!"]];
+                return [Object.keys(m)];
+              }}, 
+              loadedFonts: {items: () => {
+                const m = runtime.extensionStorage[extensionID].fonts;
+                if (Object.keys(m).length == 0) return [["Load a font!"]];
+                return [Object.keys(m)];
+              }},
             },
 
           };
@@ -1036,8 +1273,8 @@
             case "everything":
               scene.children.forEach(
                 o => {
-                  o.geometry ? o.geometry.dispose() : null;
-                  o.material ? o.material.dispose() : null;
+                  //o.geometry ? o.geometry.dispose() : null;
+                  //o.material ? o.material.dispose() : null;
                   o.removeFromParent();
                 }
               );
@@ -1057,10 +1294,33 @@
               assets.materials.clear();
               assets.textures.clear();
               assets.addons.clear();
-              scene = new THREE.Scene();
+              scene.clear();
               camera = new THREE.PerspectiveCamera(90, width/height);
               camera.position.z = 2;
               assets.objects.set("camera", camera);
+              break;
+            case "objects":
+              assets.objects.forEach( o => o.removeFromParent() );
+              assets.objects.clear();
+              break;
+            case "geometries":
+              assets.geometries.forEach(
+                o => o.dispose()
+              );
+              assets.geometries.clear();
+              break;
+            case "materials":
+              assets.materials.forEach(
+                o => o.dispose()
+              );
+              assets.materials.clear();
+              break;
+            case "textures":
+              assets.textures.forEach(
+                o => o.dispose()
+              );
+              assets.textures.clear();
+              break;
           }
 
           three.renderer.clear();
@@ -1074,11 +1334,22 @@
         vector3(args) {return `[${args.X}, ${args.Y}, ${args.Z}]`;}
 
         renderer(args) {
-          three.renderer[args.PROPERTY] = JSON.parse(args.VALUE); // is there a better way than .parse? - Civ
+          if (args.PROPERTY == "autoRender") 
+          {
+            if (JSON.parse(args.VALUE)) loopId = requestAnimationFrame(loop);
+            else {
+              cancelAnimationFrame(loopId); 
+              loopId = null;
+            }
+          } 
+          else three.renderer[args.PROPERTY] = JSON.parse(args.VALUE);
         }
         rendererClear(args) {
           three.renderer[args.B]();
           render();
+        }
+        rendererRender(args) {
+          render(); //future physics, should change this to a step() method instead? or will it work like this?º
         }
 
         scene(args) {
@@ -1093,6 +1364,7 @@
 
         deleteAsset(args) {
           const asset = assets[args.TYPE].get(args.NAME);
+          if (!asset) {console.warn(`No asset named ${args.NAME}`); return;}
           switch (args.TYPE) {
             case "objects":
               asset.removeFromParent();
@@ -1102,30 +1374,39 @@
            assets[args.TYPE].delete(args.NAME);
         }
 
-        setTransform(args) {
+        async setTransform(args) {
           const obj = assets.objects.get(args.OBJECT);
-          let v3 = new THREE.Vector3().fromArray(JSON.parse(args.VALUE));
-          if (args.TRANSFORM == "rotation") { 
-            v3 = v3.multiplyScalar(RadiansMultiplier);
-            obj.rotation.setFromVector3(v3);
-          } else obj[args.TRANSFORM].copy(v3);
+          if (!obj) {console.warn(`No object named ${args.OBJECT}`); return;}
+
+          let values = JSON.parse(args.VALUE);
+          args.TRANSFORM == "rotation" ? values = values.map(a => three.MathUtils.degToRad(a)) : null;
+          let v3 = new THREE.Vector3().fromArray(values);
+
+          if (args.TRANSFORM == "rotation") {
+            await obj.rotation.setFromVector3(v3);
+          } else await obj[args.TRANSFORM].copy(v3);
         }
 
         getTransform(args) {
+          const obj = assets.objects.get(args.OBJECT);
+          if (!obj) {console.warn(`No object named ${args.OBJECT}`); return;}
+          obj.updateMatrix();
           let v3 = assets.objects.get(args.OBJECT)[args.TRANSFORM].toArray();
-          args.TRANSFORM == "rotation" ? v3 = v3.slice(0,3).map(r=>r*180/Math.PI) : null;
+          args.TRANSFORM == "rotation" ? v3 = v3.slice(0,3).map(r=> three.MathUtils.radToDeg(r)) : null;
           return JSON.stringify(v3);
         }
 
-        transformTransform(args) {
+        async transformTransform(args) {
           const obj = assets.objects.get(args.OBJECT);
+          if (!obj) {console.warn(`No object named ${args.OBJECT}`); return;}
           let v = args.VALUE;
-          args.TRANSFORM == "rotation" ? v = v*RadiansMultiplier : null;
-          args.ACTION == "set" ? obj[args.TRANSFORM][args.XYZ] = v : obj[args.TRANSFORM][args.XYZ] += v;
+          args.TRANSFORM == "rotation" ? v = three.MathUtils.degToRad(v) : null;
+          await args.ACTION == "set" ? obj[args.TRANSFORM][args.XYZ] = v : obj[args.TRANSFORM][args.XYZ] += v;
         }
 
-        setRotation(args) {
+        async setRotation(args) {
           const obj = assets.objects.get(args.OBJECT);
+          if (!obj) {console.warn(`No object named ${args.OBJECT}`); return;}
           obj.rotation.order = args.ORDER;
         }
 
@@ -1150,13 +1431,21 @@
           return JSON.stringify(r);
         }
 
+        getVectorProjected(args) {
+          const v3 = new THREE.Vector3().fromArray(JSON.parse(args.V));
+          v3.project(camera);
+          const v2 = new THREE.Vector2(...three.skin.size.map(m=>m/2));
+          const r = [v3.x*v2.x, v3.y*v2.y];
+          return JSON.stringify(r);
+        }
+
         directionToVector(args) {
           const v1 = new THREE.Vector3().fromArray(JSON.parse(args.V1));
           const v2 = new THREE.Vector3().fromArray(JSON.parse(args.V2));
 
           const direction = v1.sub(v2).normalize();
-          const pitch = Math.atan2(-direction.y, Math.sqrt(direction.x*direction.x + direction.z*direction.z)) * 180/Math.PI;
-          const yaw = Math.atan2(direction.x, direction.z) * 180/Math.PI;
+          const pitch = three.MathUtils.radToDeg( Math.atan2(-direction.y, Math.sqrt(direction.x*direction.x + direction.z*direction.z)) );
+          const yaw = three.MathUtils.radToDeg( Math.atan2(direction.x, direction.z) );
 
           return JSON.stringify([pitch,yaw,0]);
         }
@@ -1197,7 +1486,7 @@
               obj.geometry = defaultGeo;
               break;
             case "SpotLight" || "DirectionalLight":
-              parent.add(obj.target);
+              scene.add(obj.target);
               break;
           }
 
@@ -1205,13 +1494,13 @@
             obj.castShadow = true;
             obj.receiveShadow = true;
           }
-          
-          if (args.PARENT == "scene") {
+          scene.add(obj);
+          /*if (args.PARENT == "scene") {
             scene.add(obj);
           } else if (!parent) { //should search in another map for scenes with that name (future) - Civ
             console.error(`No object named "${args.PARENT}". Adding to scene.`);
-            scene.add(obj);
-          } else parent.add(obj);
+            scene.add(obj)
+          } else parent.add(obj);*/
         }
 
         objectExists(args){
@@ -1221,14 +1510,11 @@
 
         setRenderingCamera(args){
           const selected = assets.objects.get(args.NAME);
-          if (!selected) {
-            console.error(`No object named "${args.NAME}"`);
-            return;
-          }
+          if (!selected) {console.warn(`No object named "${args.NAME}"`); return;}
           camera = selected;
         }
 
-        camera() {return [...assets.objects.entries()].find(([k, v]) => v === camera)?.[0];}
+        camera() {return [...assets.objects.entries()].find(([key, value]) => value === camera)?.[0];}
 
         setObject(args) {
           let data;
@@ -1236,14 +1522,32 @@
 
           switch (args.PROPERTY) {
             case "geometry":
-              data = assets.geometries.get(args.DATA);
+              data = assets.geometries.get(args.DATA) || defaultGeo;
               obj.geometry = data;
               break;
             case "material":
-              data = assets.materials.get(args.DATA);
+              let material = args.DATA;
+              data = [];
+              try { material = JSON.parse(material);
+              material.forEach(m=>data.push(assets.materials.get(m) || defaultMat));}
+              catch {data = assets.materials.get(material) || defaultMat;}
+              console.log(data, material)
               obj.material = data;
           }
         }
+        /* only works for geometries with specified groups... Idea! Block: set [OBJECT] material [GROUP (0=all/1, 1:1, 2:2...)] to [MATERIAL]
+        // idea2: have little join blocks but for materials: (join (join material and material) and material), and keep curent set block.
+        setMaterialArray(args) {
+          const materials = [
+            assets.materials.get(args.M1),
+            assets.materials.get(args.M2),
+            assets.materials.get(args.M3),
+            assets.materials.get(args.M4),
+            assets.materials.get(args.M5),
+            assets.materials.get(args.M6),
+          ];
+          assets.objects.get(args.NAME).material = materials;
+        }*/
 
         createGeometry(args) {
           let geometry = assets.geometries.get(args.NAME);
@@ -1257,6 +1561,7 @@
 
         setGeometry(args) {
           const geometry = assets.geometries.get(args.NAME);
+          if (!geometry) {console.warn(`No geometry named ${args.NAME}`); return;}
 
           let data, dataLength;
           data = args.DATA.split(" ").map(p=>JSON.parse(p)).flat(); //from [0,0,0] [0,0,1] to 0,0,0,0,0,1
@@ -1276,7 +1581,7 @@
         createMaterial(args) {
           let material = assets.materials.get(args.NAME);
           if (material) {
-            console.warn(`Already existing material named "${args.NAME}". Will replace!`);
+            console.warn(`Already existing material named ${args.NAME}. Will replace!`);
             material.dispose();
           }
           material = new THREE[args.TYPE]();
@@ -1285,6 +1590,7 @@
 
         setMaterial(args) {
           const material = assets.materials.get(args.NAME);
+          if (!material) {console.warn(`No material named ${args.NAME}`); return;}
           material[args.PROPERTY] = args.DATA;
           material.needsUpdate = true;
         }
@@ -1298,18 +1604,35 @@
         }
         setMapMaterial(args) {
           args.DATA = assets.textures.get(args.DATA);
+          if (!texture) {console.warn(`No texture named ${args.DATA}`); return;}
           this.setMaterial(args);
+        }
+        setMaterialSide(args) {
+          args.PROPERTY = "side";
+          args.DATA = JSON.parse(args.DATA);
+          this.setMaterial(args);
+        }
+        joinMaterial(args) {
+          let m1 = args.MATERIAL;
+          let m2 = args.MATERIAL2;
+          try { m1 = JSON.parse(m1);}
+          catch {m1 = [m1];}
+          try { m2 = JSON.parse(m2);}
+          catch {m2 = [m2];}
+          m1.push(...m2);
+          return JSON.stringify(m1);
         }
 
         async loadTexture(args) {
-          const img = Scratch.vm.editingTarget.getCostumes()[(Scratch.vm.editingTarget.getCostumeIndexByName(args.COSTUME))].asset.encodeDataURI();
-          const texture = await three.textureLoader.loadAsync(img);
+          const img = vm.editingTarget.getCostumes()[(vm.editingTarget.getCostumeIndexByName(args.COSTUME))].asset.encodeDataURI();
+          const texture = await three.TextureLoader.loadAsync(img);
           texture.colorSpace = "srgb";
           assets.textures.set(args.NAME, texture);
         }
 
         setTextureWrap(args) {
           const texture = assets.textures.get(args.NAME);
+          if (!texture) {console.warn(`No texture named ${args.NAME}`); return;}
           texture.wrapS = args.U;
           texture.wrapT = args.V;
           texture.needsUpdate = true;
@@ -1317,6 +1640,7 @@
 
         setTextureFilter(args) {
           const texture = assets.textures.get(args.NAME);
+          if (!texture) {console.warn(`No texture named ${args.NAME}`); return;}
           texture.magFilter = THREE[args.MAG];
           texture.minFilter = THREE[args.MIN];
           texture.needsUpdate = true;
@@ -1324,14 +1648,22 @@
 
         setTexture(args) {
           const texture = assets.textures.get(args.NAME);
+          if (!texture) {console.warn(`No texture named ${args.NAME}`); return;}
           let r = JSON.parse(args.VALUE);
           typeof(r) == "object" ? r = new THREE.Vector2().fromArray(r) : null;
           texture[args.PROPERTY] = r;
           texture.needsUpdate = true;
         }
+        setTextureMapping(args) {
+          const texture = assets.textures.get(args.NAME);
+          if (!texture) {console.warn(`No texture named ${args.NAME}`); return;}
+          texture.mapping = JSON.parse(args.VALUE);
+          texture.needsUpdate = true;
+        }
 
         setCamera(args) {
           const cam = assets.objects.get(args.NAME);
+          if (!cam) {console.warn(`No camera named ${args.NAME}`); return;}
           if (cam.isCamera) {
             cam[args.PROPERTY] = JSON.parse(args.VALUE);
             cam.updateProjectionMatrix();
@@ -1340,6 +1672,7 @@
 
         setLight(args) {
           const light = assets.objects.get(args.NAME);
+          if (!light) {console.warn(`No light named ${args.NAME}`); return;}
           let r = args.VALUE;
           if (light.isLight) {
             //texture? color?
@@ -1352,6 +1685,7 @@
         setHemisphereLight(args) {
           if (args.PROPERTY == "skyColor") {
             const light = assets.objects.get(args.NAME);
+            if (!light) {console.warn(`No light named ${args.NAME}`); return;}
             assets.objects.delete(args.NAME);
             light.removeFromParent();
 
@@ -1364,6 +1698,7 @@
         }
         setTargetLight(args) {
           const light = assets.objects.get(args.NAME);
+          if (!light) {console.warn(`No light named ${args.NAME}`); return;}
           if (light.isSpotLight || light.isDirectionalLight ) {
             light.target.position.set(...JSON.parse(args.VALUE));
             light.target.updateMatrixWorld();
@@ -1383,13 +1718,263 @@
             oc ? oc.connect(renderer.canvas) : assets.addons.set("orbitControls", new OrbitControls(camera, renderer.canvas));
           } else { oc.disconnect(); oc.reset(); }
         }
-        
 
+        async loadModel() {
+          const file = await requestFile(".glb,gltf");
+          runtime.extensionStorage[extensionID].models[file.name] = file.url;
+          vm.extensionManager.refreshBlocks();
+        }
+        async addModel(args) {
+          const url = runtime.extensionStorage[extensionID].models[args.FILE];
+          if (!url) {console.warn(`No model named ${args.FILE}`); return;}
+
+          const response = await fetch(url);
+          const file = await response.arrayBuffer();
+          console.log(response, file);
+
+          const group = new THREE.Group();
+          scene.add(group);
+          assets.objects.set(args.NAME, group);
+
+          three.ModelLoader.parse(file, "", (glb) => {
+            const model = glb.scene;
+            console.log(glb);
+            group.add(model);
+          });
+        }
+        removeModel(args) {
+          confirm(`Are you sure you want to delete ${args.FILE}?`) ? delete runtime.extensionStorage[extensionID].models[args.FILE] : null;
+          vm.extensionManager.refreshBlocks();
+        }
+
+        createInstance(args) {
+          const g = assets.geometries.get(args.GEOMETRY) || defaultGeo;
+
+          let material = args.MATERIAL;
+          let mat = [];
+              try { material = JSON.parse(material);
+              material.forEach(m=>mat.push(assets.materials.get(m) || defaultMat));}
+              catch {mat = assets.materials.get(material) || defaultMat;}
+
+          const i = new THREE.InstancedMesh(g,mat,args.COUNT);
+          i.instanceMatrix.setUsage( THREE.DynamicDrawUsage ); //should add a block to change this?? is it any harm leaving it like this?
+          assets.objects.set(args.NAME, i);
+          scene.add(i);
+        }
+
+        setInstance(args) {
+          const i = assets.objects.get(args.NAME);
+          if (!I) {console.warn(`No instance named ${args.NAME}`); return;}
+          if (args.PROPERTY == "matrix") {
+            const m = new THREE.Matrix4().fromArray(JSON.parse(args.MATRIX));
+            i.setMatrixAt(args.INDEX-1, m);
+            i.instanceMatrix.needsUpdate = true;
+          } else {
+            i.setColorAt(args.INDEX-1, new THREE.Color(args.MATRIX));
+            i.instanceColor.needsUpdate = true;
+          }
+        }
+
+        getMatrixTransform(args) {
+          const m = new THREE.Matrix4().fromArray(JSON.parse(args.M));
+
+          const position = new THREE.Vector3();
+          const quaternion = new THREE.Quaternion();
+          const scale = new THREE.Vector3();
+
+          m.decompose(position, quaternion, scale);
+
+          const decomposed = {
+          "position": position,
+          "rotation": quaternion,
+          "scale": scale
+          };
+          let v3 = decomposed[args.TRANSFORM].toArray();
+          args.TRANSFORM == "rotation" ? v3 = new THREE.Euler().setFromQuaternion(quaternion).toArray().slice(0,3).map(r => THREE.MathUtils.radToDeg(r)) : null;
+          return JSON.stringify(v3); 
+        }
+
+        doMatrix(args) {
+          const m = new THREE.Matrix4();
+          const position = new THREE.Vector3().fromArray(JSON.parse(args.POSITION));
+          const quaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler().fromArray(JSON.parse(args.ROTATION).map(a => three.MathUtils.degToRad(a))));
+          const scale = new THREE.Vector3().fromArray(JSON.parse(args.SCALE));
+
+          m.compose(position, quaternion, scale);
+
+          return JSON.stringify(m.elements);
+        }
+
+        async loadFont() {
+          //get ttf file
+          const file = await new Promise((resolve) => {
+          const input = document.createElement("input");
+            input.type = "file";
+            input.accept = ".ttf";
+            input.multiple = false;
+            input.onchange = () => {
+              resolve(input.files);
+              input.remove();
+            };
+            input.click();
+          });
+
+          opentype ? null : opentype = await import("https://esm.sh/opentype.js");
+
+          const url = await new Promise((resolve) => {
+            const fr = new FileReader();
+            fr.onload = () => {
+              const result = opentype.parse(fr.result);
+              resolve(convertToFaceType(result));
+            };
+            fr.readAsArrayBuffer(file[0]);
+          });
+          //convert to json
+          function convertToFaceType(font) {
+/*
+https://github.com/gero3/facetype.js
+//Modified by Civero to match current compatibillity
+
+The MIT License (MIT)
+
+Copyright (c) 2016 gero3
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+                                              var scale = (1000 * 100) / ( (font.unitsPerEm || 2048) *72);
+                                              var result = {};
+                                              result.glyphs = {};
+
+                                              for (let i = 0; i < font.glyphs.length; i++) {
+                                                  const glyph = font.glyphs.get(i);
+                                                  const unicodes = [];
+                                                  if (glyph.unicode !== undefined) {
+                                                      unicodes.push(glyph.unicode);
+                                                  }
+                                                  if (glyph.unicodes.length) {
+                                                      glyph.unicodes.forEach(function(unicode){
+                                                          if (unicodes.indexOf (unicode) == -1) {
+                                                              unicodes.push(unicode);
+                                                          }
+                                                      });
+                                                  }
+                                                
+                                                  unicodes.forEach(function(unicode){
+                                                var glyphCharacter = String.fromCharCode (unicode);
+                                                var needToExport = true;
+                                                /*if (restriction.range !== null) {
+                                                  needToExport = (unicode >= restriction.range[0] && unicode <= restriction.range[1]);
+                                                } else if (restriction.set !== null) {
+                                                  needToExport = (restrictCharacterSetInput.value.indexOf (glyphCharacter) != -1);
+                                                }*/
+                                                      if (needToExport) {
+
+                                                  var token = {};
+                                                  token.ha = Math.round(glyph.advanceWidth * scale);
+                                                  token.x_min = Math.round(glyph.xMin * scale);
+                                                  token.x_max = Math.round(glyph.xMax * scale);
+                                                  token.o = "";
+                                                  //if (reverseTypeface.checked) {glyph.path.commands = reverseCommands(glyph.path.commands);}
+                                                  glyph.path.commands.forEach(function(command,i){
+                                                    if (command.type.toLowerCase() === "c") {command.type = "b";}
+                                                    token.o += command.type.toLowerCase();
+                                                    token.o += " ";
+                                                    if (command.x !== undefined && command.y !== undefined){
+                                                      token.o += Math.round(command.x * scale);
+                                                      token.o += " ";
+                                                      token.o += Math.round(command.y * scale);
+                                                      token.o += " ";
+                                                    }
+                                                    if (command.x1 !== undefined && command.y1 !== undefined){
+                                                      token.o += Math.round(command.x1 * scale);
+                                                      token.o += " ";
+                                                      token.o += Math.round(command.y1 * scale);
+                                                      token.o += " ";
+                                                    }
+                                                    if (command.x2 !== undefined && command.y2 !== undefined){
+                                                      token.o += Math.round(command.x2 * scale);
+                                                      token.o += " ";
+                                                      token.o += Math.round(command.y2 * scale);
+                                                      token.o += " ";
+                                                    }
+                                                  });
+                                                  result.glyphs[String.fromCharCode(unicode)] = token;
+                                                }
+                                                  });
+                                              }
+                                              result.familyName = font.familyName;
+                                              result.ascender = Math.round(font.ascender * scale);
+                                              result.descender = Math.round(font.descender * scale);
+                                              result.underlinePosition = Math.round(font.tables.post.underlinePosition * scale);
+                                              result.underlineThickness = Math.round(font.tables.post.underlineThickness * scale);
+                                              result.boundingBox = {
+                                                  "yMin": Math.round(font.tables.head.yMin * scale),
+                                                  "xMin": Math.round(font.tables.head.xMin * scale),
+                                                  "yMax": Math.round(font.tables.head.yMax * scale),
+                                                  "xMax": Math.round(font.tables.head.xMax * scale)
+                                              };
+                                              result.resolution = 1000;
+                                              result.original_font_information = font.tables.name;
+                                              if (font.names.fontSubfamily.en.toLowerCase().indexOf("bold") > -1){
+                                                  result.cssFontWeight = "bold";
+                                              } else {
+                                                  result.cssFontWeight = "normal";
+                                              }
+
+                                              if (font.names.fontSubfamily.en.toLowerCase().indexOf("italic") > -1){
+                                                  result.cssFontStyle = "italic";
+                                              } else {
+                                                  result.cssFontStyle = "normal";
+                                              }
+                                              
+                                              return JSON.stringify(result);
+          }
+
+          runtime.extensionStorage[extensionID].fonts[file[0].name] = url;
+          vm.extensionManager.refreshBlocks();
+        }
+        createTextGeometry(args) {
+          const file = JSON.parse(runtime.extensionStorage[extensionID].fonts[args.FILE]);
+          if (!file) {console.warn(`No font named ${args.FILE}`); return;}
+          const font = three.TextLoader.parse(file);
+          const geometry = new TextGeometry(args.TEXT, {
+            font: font,
+            size: 1,
+            depth: args.DEPTH,
+          });
+          geometry.center();
+          assets.geometries.set(args.NAME, geometry);
+        }
+      
       }
 
       Scratch.extensions.register(new ThreeJS());
       loopId = requestAnimationFrame(loop);
       loop();
+
+      if (!runtime.extensionStorage[extensionID]) {
+        runtime.extensionStorage[extensionID] = {
+          models: {},
+          fonts: {}
+        };
+      }
+
 
     })
 
