@@ -44,6 +44,7 @@
     materials: new Map(),
     textures: new Map(),
     addons: new Map(),
+    sounds: new Map(),
   };
 
   const setupThree = () => {
@@ -60,8 +61,10 @@
     const ModelLoader = new GLTFLoader();
     const TextLoader = new FontLoader();
     const MathUtils = THREE.MathUtils;
+    const AudioListener = new THREE.AudioListener();
+    const AudioLoader = new THREE.AudioLoader();
 
-    return { renderer, context, TextureLoader, ModelLoader, MathUtils, TextLoader };
+    return { renderer, context, TextureLoader, ModelLoader, MathUtils, TextLoader, AudioListener, AudioLoader };
   };
 
   const setupSkin = () => {
@@ -882,7 +885,7 @@
                 opcode: "setLight",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "for light [NAME] set [PROPERTY] to [VALUE]",
-                color1: "#8a963a",
+                color1: "#5FAD56",
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "light" },
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "light"},
@@ -893,7 +896,7 @@
                 opcode: "setPointLight",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "for point or spot light [NAME] set [PROPERTY] to [VALUE]",
-                color1: "#8a963a",
+                color1: "#5FAD56",
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "light" },
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "pointLight", defaultValue: "distance"},
@@ -904,7 +907,7 @@
                 opcode: "setTargetLight",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "for spot or directional light [NAME] target to [VALUE]",
-                color1: "#8a963a",
+                color1: "#5FAD56",
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "light" },
                   VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,0,0]"},
@@ -914,7 +917,7 @@
                 opcode: "setSpotLight",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "for spot light [NAME] set [PROPERTY] to [VALUE]",
-                color1: "#8a963a",
+                color1: "#5FAD56",
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "light" },
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "spotLight", defaultValue: "penumbra"},
@@ -925,7 +928,7 @@
                 opcode: "setHemisphereLight",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "for hemisphere light [NAME] set [PROPERTY] to [VALUE]",
-                color1: "#8a963a",
+                color1: "#5FAD56",
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "light" },
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "hemisphereLight"},
@@ -941,19 +944,65 @@
               {
                 opcode: "touching",
                 blockType: Scratch.BlockType.BOOLEAN,
-                text: "is object [A] touching object [B] [MODE]?",
-                color1: "#569ead",
+                text: "is [A] touching [B]?",
                 arguments: {
                   A: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
-                  B: { type: Scratch.ArgumentType.STRING, defaultValue: "ground"},
-                  MODE: { type: Scratch.ArgumentType.STRING, defaultValue: "Box"},
+                  B: { type: Scratch.ArgumentType.STRING, defaultValue: "ground"}
+                }
+              },
+
+              "---",
+              
+              {blockType: "label",
+              text: Scratch.translate("Audio")},
+
+              {
+                opcode: "addAudio",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "add audio [FILE] to [PARENT]",
+                color1: "#5FAD56",
+                arguments: {
+                  FILE: { type: Scratch.ArgumentType.SOUND },
+                  PARENT: { type: Scratch.ArgumentType.STRING, defaultValue: "bird"},
+                }
+              },
+              {
+                opcode: "doAudio",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "for audio [NAME] [PROPERTY]",
+                color1: "#5FAD56",
+                arguments: {
+                  NAME: { type: Scratch.ArgumentType.SOUND},
+                  PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "audioPlayback"},
+                }
+              },
+              {
+                opcode: "setAudio",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "set audio [NAME] [PROPERTY] to [DATA]",
+                color1: "#5FAD56",
+                arguments: {
+                  NAME: { type: Scratch.ArgumentType.SOUND},
+                  PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "audioNumeral"},
+                  DATA: { type: Scratch.ArgumentType.NUMBER, defaultValue: "1" }
+                }
+              },
+              {
+                opcode: "setAudioBoolean",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "set audio [NAME] [PROPERTY] [DATA]",
+                color1: "#5FAD56",
+                arguments: {
+                  NAME: { type: Scratch.ArgumentType.SOUND},
+                  PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "audioBoolean"},
+                  DATA: { type: Scratch.ArgumentType.NUMBER, menu: "boolean" }
                 }
               },
 
               "---",
 
               {blockType: "label",
-              text: Scratch.translate("Mesh instances, Audio, Animation importig, Text geometry...")},
+              text: Scratch.translate("Animation importig...")},
               
               {
                 opcode: "orbitControls",
@@ -1251,6 +1300,23 @@
                 {text: Scratch.translate("memory"), value: "memory"},
                 {text: Scratch.translate("render"), value: "render"},
               ]},
+              audioNumeral: {items: [
+                { text: Scratch.translate("Volume"), value: "setVolume" },
+                { text: Scratch.translate("Playback Rate"), value: "setPlaybackRate" },
+                { text: Scratch.translate("Detune"), value: "setDetune" },
+                { text: Scratch.translate("Volume Drop Distance"), value: "setRefDistance" },
+                { text: Scratch.translate("Max Distance"), value: "setMaxDistance" },
+                { text: Scratch.translate("Fade Factor"), value: "setRolloffFactor" },
+              ]},
+              audioBoolean: {items: [
+                //{ text: Scratch.translate("Autoplay"), value: "autoplay" },
+                { text: Scratch.translate("Loop"), value: "setLoop" },
+              ]},
+              audioPlayback: {items: [
+                { text: Scratch.translate("Play/Resume"), value: "play" },
+                { text: Scratch.translate("Stop"), value: "stop" },
+                { text: Scratch.translate("Pause"), value: "pause" },
+              ]},
               loadedModels: {items: () => {
                 const m = runtime.extensionStorage[extensionID].models;
                 if (Object.keys(m).length == 0) return [["Load a model!"]];
@@ -1459,14 +1525,15 @@
 
         addObject(args) {
           if (this.objectExists({NAME: args.NAME})) {
-            console.warn(`Already existing object named "${args.NAME}". Will replace!`);
+            console.warn(`Already existing object named ${args.NAME}. Will replace!`);
             const obj = assets.objects.get(args.NAME);
-            scene.remove(obj);
+            obj.removeFromParent();
           }
           const obj = new THREE[args.TYPE]();
 
+          if (args.NAME == "scene") {console.warn(`Don't name objects "scene"!`); return;}
+
           assets.objects.set(args.NAME, obj);
-          const parent = assets.objects.get(args.PARENT);
 
           switch (args.TYPE) {
             case "PerspectiveCamera": 
@@ -1494,13 +1561,10 @@
             obj.castShadow = true;
             obj.receiveShadow = true;
           }
-          scene.add(obj);
-          /*if (args.PARENT == "scene") {
-            scene.add(obj);
-          } else if (!parent) { //should search in another map for scenes with that name (future) - Civ
-            console.error(`No object named "${args.PARENT}". Adding to scene.`);
-            scene.add(obj)
-          } else parent.add(obj);*/
+          
+          const parent = assets.objects.get(args.PARENT);
+          if (!parent) scene.add(obj);
+          else parent.add(obj);
         }
 
         objectExists(args){
@@ -1531,23 +1595,9 @@
               try { material = JSON.parse(material);
               material.forEach(m=>data.push(assets.materials.get(m) || defaultMat));}
               catch {data = assets.materials.get(material) || defaultMat;}
-              console.log(data, material)
               obj.material = data;
           }
         }
-        /* only works for geometries with specified groups... Idea! Block: set [OBJECT] material [GROUP (0=all/1, 1:1, 2:2...)] to [MATERIAL]
-        // idea2: have little join blocks but for materials: (join (join material and material) and material), and keep curent set block.
-        setMaterialArray(args) {
-          const materials = [
-            assets.materials.get(args.M1),
-            assets.materials.get(args.M2),
-            assets.materials.get(args.M3),
-            assets.materials.get(args.M4),
-            assets.materials.get(args.M5),
-            assets.materials.get(args.M6),
-          ];
-          assets.objects.get(args.NAME).material = materials;
-        }*/
 
         createGeometry(args) {
           let geometry = assets.geometries.get(args.NAME);
@@ -1706,8 +1756,12 @@
         }
 
         touching(args) {
-          let a = new THREE.Box3().setFromObject( assets.objects.get(args.A) );
-          let b = new THREE.Box3().setFromObject( assets.objects.get(args.B) );
+          const oa = assets.objects.get(args.A);
+          if (!oa) {console.warn(`No object named ${args.A}`); return;}
+          const ob = assets.objects.get(args.B);
+          if (!ob) {console.warn(`No object named ${args.B}`); return;}
+          let a = new THREE.Box3().setFromObject( oa );
+          let b = new THREE.Box3().setFromObject( ob );
 
           return a.intersectsBox(b);
         }
@@ -1725,6 +1779,8 @@
           vm.extensionManager.refreshBlocks();
         }
         async addModel(args) {
+          if (args.NAME == "scene") {console.warn(`Don't name objects "scene"!`); return;}
+
           const url = runtime.extensionStorage[extensionID].models[args.FILE];
           if (!url) {console.warn(`No model named ${args.FILE}`); return;}
 
@@ -1748,6 +1804,8 @@
         }
 
         createInstance(args) {
+          if (args.NAME == "scene") {console.warn(`Don't name objects "scene"!`); return;}
+
           const g = assets.geometries.get(args.GEOMETRY) || defaultGeo;
 
           let material = args.MATERIAL;
@@ -1961,6 +2019,50 @@ SOFTWARE.
           geometry.center();
           assets.geometries.set(args.NAME, geometry);
         }
+
+        async addAudio(args) {
+          if (args.FILE == "scene") {console.warn(`Don't name objects "scene"!`); return;}
+
+          const sounds = vm.editingTarget.getSounds();
+          const file = sounds[sounds.findIndex(a=>a.name==args.FILE)].asset.encodeDataURI();
+
+          const sound = new THREE.PositionalAudio(three.AudioListener);
+          console.log(file)
+          const buffer = await three.AudioLoader.loadAsync(file);
+          sound.setBuffer(buffer);
+          console.log(buffer)
+
+          if (this.objectExists({NAME: args.FILE})) {
+            console.warn(`Already existing object named ${args.FILE}. Will replace!`);
+            const obj = assets.objects.get(args.FILE);
+            obj.removeFromParent();
+          }
+          assets.objects.set(args.FILE, sound);
+
+          const parent = assets.objects.get(args.PARENT);
+          if (!parent) scene.add(sound);
+          else parent.add(sound);
+        }
+
+        setAudio(args) {
+          const sound = assets.objects.get(args.NAME);
+          if (!sound) {console.warn(`No sound named ${args.NAME}`); return;}
+          
+          args.DATA ? sound[args.PROPERTY](JSON.parse(args.DATA)) : sound[args.PROPERTY]();
+        }
+        doAudio(args) {this.setAudio(args);}
+        setAudioBoolean(args) {
+          args.DATA = !!args.DATA;
+          this.setAudio(args);
+        }
+
+        //autoplay, setLoop(true), setVolume(0.5), setDetune()
+        //play, pause, stop
+        //.setDirectionalCone( coneInnerAngle : number, coneOuterAngle : number, coneOuterGain : number )
+        //.setDistanceModel( value : 'linear' | 'inverse' | 'exponential' )
+        //.setMaxDistance( value : number )
+        //.setMaxDistance( value : number )
+        //.setRolloffFactor( value : number )
       
       }
 
