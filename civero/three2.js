@@ -44,7 +44,7 @@
     materials: new Map(),
     textures: new Map(),
     addons: new Map(),
-    sounds: new Map(),
+    audios: new Map(),
   };
 
   const setupThree = () => {
@@ -195,6 +195,7 @@
 
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(90, width/height);
+    camera.add(three.AudioListener);
     camera.position.z = 2;
     assets.objects.set("camera", camera);
     clock = new THREE.Clock();
@@ -955,14 +956,23 @@
               
               {blockType: "label",
               text: Scratch.translate("Audio")},
-
               {
-                opcode: "addAudio",
+                opcode: "loadAudio",
                 blockType: Scratch.BlockType.COMMAND,
-                text: "add audio [FILE] to [PARENT]",
+                text: "load audio [FILE] as [NAME]",
                 color1: "#5FAD56",
                 arguments: {
                   FILE: { type: Scratch.ArgumentType.SOUND },
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Whiz"},
+                }
+              },
+              {
+                opcode: "addAudio",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "add audio [NAME] to [PARENT]", 
+                color1: "#5FAD56",
+                arguments: {
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Whiz"},
                   PARENT: { type: Scratch.ArgumentType.STRING, defaultValue: "bird"},
                 }
               },
@@ -972,7 +982,7 @@
                 text: "for audio [NAME] [PROPERTY]",
                 color1: "#5FAD56",
                 arguments: {
-                  NAME: { type: Scratch.ArgumentType.SOUND},
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Whiz"},
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "audioPlayback"},
                 }
               },
@@ -982,7 +992,7 @@
                 text: "set audio [NAME] [PROPERTY] to [DATA]",
                 color1: "#5FAD56",
                 arguments: {
-                  NAME: { type: Scratch.ArgumentType.SOUND},
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Whiz"},
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "audioNumeral"},
                   DATA: { type: Scratch.ArgumentType.NUMBER, defaultValue: "1" }
                 }
@@ -993,10 +1003,26 @@
                 text: "set audio [NAME] [PROPERTY] [DATA]",
                 color1: "#5FAD56",
                 arguments: {
-                  NAME: { type: Scratch.ArgumentType.SOUND},
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Whiz"},
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "audioBoolean"},
                   DATA: { type: Scratch.ArgumentType.NUMBER, menu: "boolean" }
                 }
+              },
+              {
+                opcode: "isAudio",
+                blockType: Scratch.BlockType.BOOLEAN,
+                text: "is audio [NAME] [PROPERTY]",
+                color1: "#5FAD56",
+                arguments: {
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Whiz"},
+                  PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "isAudio"},
+                }
+              },
+              {
+                opcode: "stopAllAudios",
+                blockType: "command",
+                text: "stop all 3D audios",
+                color1: "#C84630",               
               },
 
               "---",
@@ -1069,6 +1095,7 @@
                 {text: Scratch.translate("geometry"), value: "geometries"},
                 {text: Scratch.translate("material"), value: "materials"},
                 {text: Scratch.translate("texture"), value: "textures"},
+                {text: Scratch.translate("audios"), value: "audios"},
               ]},
               transformType: {
                 items: [
@@ -1295,6 +1322,7 @@
                 {text: Scratch.translate("geometries"), value: "geometries"},
                 {text: Scratch.translate("materials"), value: "materials"},
                 {text: Scratch.translate("textures"), value: "textures"},
+                {text: Scratch.translate("audios"), value: "audios"},
               ]},
               stats: {items: [
                 {text: Scratch.translate("memory"), value: "memory"},
@@ -1302,11 +1330,14 @@
               ]},
               audioNumeral: {items: [
                 { text: Scratch.translate("Volume"), value: "setVolume" },
-                { text: Scratch.translate("Playback Rate"), value: "setPlaybackRate" },
+                { text: Scratch.translate("Speed"), value: "setPlaybackRate" },
                 { text: Scratch.translate("Detune"), value: "setDetune" },
-                { text: Scratch.translate("Volume Drop Distance"), value: "setRefDistance" },
+                { text: Scratch.translate("Volume Drop Distance (0.01-x)"), value: "setRefDistance" },
                 { text: Scratch.translate("Max Distance"), value: "setMaxDistance" },
                 { text: Scratch.translate("Fade Factor"), value: "setRolloffFactor" },
+                //{ text: Scratch.translate("Loop start (seconds)"), value: "setLoopStart" },
+                //{ text: Scratch.translate("Loop end (seconds)"), value: "setLoopEnd" },
+                { text: Scratch.translate("Offset"), value: "offset" },
               ]},
               audioBoolean: {items: [
                 //{ text: Scratch.translate("Autoplay"), value: "autoplay" },
@@ -1316,6 +1347,10 @@
                 { text: Scratch.translate("Play/Resume"), value: "play" },
                 { text: Scratch.translate("Stop"), value: "stop" },
                 { text: Scratch.translate("Pause"), value: "pause" },
+              ]},
+              isAudio: {items: [
+                { text: Scratch.translate("playing"), value: "isPlaying" },
+                { text: Scratch.translate("looping"), value: "loop" },               
               ]},
               loadedModels: {items: () => {
                 const m = runtime.extensionStorage[extensionID].models;
@@ -1337,6 +1372,7 @@
         reset(args) {
           switch (args.VALUE) {
             case "everything":
+              this.stopAllAudios();
               scene.children.forEach(
                 o => {
                   //o.geometry ? o.geometry.dispose() : null;
@@ -1360,8 +1396,10 @@
               assets.materials.clear();
               assets.textures.clear();
               assets.addons.clear();
+              assets.audios.clear();
               scene.clear();
               camera = new THREE.PerspectiveCamera(90, width/height);
+              camera.add(three.AudioListener);
               camera.position.z = 2;
               assets.objects.set("camera", camera);
               break;
@@ -1386,6 +1424,9 @@
                 o => o.dispose()
               );
               assets.textures.clear();
+              break;
+            case "audios":
+              assets.audios.clear();
               break;
           }
 
@@ -1575,6 +1616,9 @@
         setRenderingCamera(args){
           const selected = assets.objects.get(args.NAME);
           if (!selected) {console.warn(`No object named "${args.NAME}"`); return;}
+
+          three.AudioListener.removeFromParent();
+          selected.add(three.AudioListener);
           camera = selected;
         }
 
@@ -2019,25 +2063,34 @@ SOFTWARE.
           geometry.center();
           assets.geometries.set(args.NAME, geometry);
         }
+        removeFont(args) {
+          delete runtime.extensionStorage[extensionID].fonts[args.FILE];
+        }
 
-        async addAudio(args) {
-          if (args.FILE == "scene") {console.warn(`Don't name objects "scene"!`); return;}
-
+        async loadAudio(args) {
           const sounds = vm.editingTarget.getSounds();
-          const file = sounds[sounds.findIndex(a=>a.name==args.FILE)].asset.encodeDataURI();
+          const file = sounds[sounds.findIndex(a=>a.name==args.FILE)].asset.data.buffer;
+
+          const audioContext = THREE.AudioContext.getContext();
+          const buffer = await audioContext.decodeAudioData(file.slice(0));
+
+          assets.audios.set(args.NAME, buffer);
+        }
+
+        addAudio(args) {
+          if (args.NAME == "scene") {console.warn(`Don't name objects "scene"!`); return;}
+
+          const buffer = assets.audios.get(args.NAME);
 
           const sound = new THREE.PositionalAudio(three.AudioListener);
-          console.log(file)
-          const buffer = await three.AudioLoader.loadAsync(file);
           sound.setBuffer(buffer);
-          console.log(buffer)
 
-          if (this.objectExists({NAME: args.FILE})) {
-            console.warn(`Already existing object named ${args.FILE}. Will replace!`);
-            const obj = assets.objects.get(args.FILE);
+          if (this.objectExists({NAME: args.NAME})) {
+            console.warn(`Already existing object named ${args.NAME}. Will replace!`);
+            const obj = assets.objects.get(args.NAME);
             obj.removeFromParent();
           }
-          assets.objects.set(args.FILE, sound);
+          assets.objects.set(args.NAME, sound);
 
           const parent = assets.objects.get(args.PARENT);
           if (!parent) scene.add(sound);
@@ -2047,22 +2100,25 @@ SOFTWARE.
         setAudio(args) {
           const sound = assets.objects.get(args.NAME);
           if (!sound) {console.warn(`No sound named ${args.NAME}`); return;}
-          
+
+          if (args.DATA == "offset") { sound.offset = JSON.parse(args.DATA); return;}
           args.DATA ? sound[args.PROPERTY](JSON.parse(args.DATA)) : sound[args.PROPERTY]();
         }
         doAudio(args) {this.setAudio(args);}
-        setAudioBoolean(args) {
-          args.DATA = !!args.DATA;
-          this.setAudio(args);
+        setAudioBoolean(args) {this.setAudio(args);}
+
+        isAudio(args) {
+          const sound = assets.objects.get(args.NAME);
+          if (!sound) {console.warn(`No sound named ${args.NAME}`); return;}
+
+          return sound[args.PROPERTY];
         }
 
-        //autoplay, setLoop(true), setVolume(0.5), setDetune()
-        //play, pause, stop
-        //.setDirectionalCone( coneInnerAngle : number, coneOuterAngle : number, coneOuterGain : number )
-        //.setDistanceModel( value : 'linear' | 'inverse' | 'exponential' )
-        //.setMaxDistance( value : number )
-        //.setMaxDistance( value : number )
-        //.setRolloffFactor( value : number )
+        stopAllAudios() {
+          assets.objects.forEach(
+            a => {if (a.type == "Audio") {a.setLoopEnd(0); a.stop();}}
+          );
+        }
       
       }
 
