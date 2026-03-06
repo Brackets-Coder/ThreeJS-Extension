@@ -32,6 +32,7 @@
   const {OrbitControls} = await import("https://esm.sh/three@0.182.0/examples/jsm/controls/OrbitControls.js");
   const {GLTFLoader} = await import("https://esm.sh/three@0.182.0/addons/loaders/GLTFLoader.js");
   const {OBJLoader} = await import("https://esm.sh/three@0.182.0/addons/loaders/OBJLoader.js");
+  const {FBXLoader} = await import("https://esm.sh/three@0.182.0/addons/loaders/FBXLoader.js");
   const {FontLoader} = await import ("https://esm.sh/three@0.182.0/addons/loaders/FontLoader.js");
   let opentype;
 
@@ -61,6 +62,7 @@
     const TextureLoader = new THREE.TextureLoader();
     const GLTFLoad = new GLTFLoader();
     const OBJLoad = new OBJLoader();
+    const FBXLoad = new FBXLoader();
     const TextLoader = new FontLoader();
     const MathUtils = THREE.MathUtils;
     const AudioListener = new THREE.AudioListener();
@@ -69,7 +71,7 @@
     const {RectAreaLightUniformsLib} = await import("https://esm.sh/three@0.182.0/addons/lights/RectAreaLightUniformsLib.js");
     RectAreaLightUniformsLib.init();
 
-    return { renderer, context, TextureLoader, GLTFLoad, OBJLoad, MathUtils, TextLoader, AudioListener, AudioLoader };
+    return { renderer, context, TextureLoader, GLTFLoad, OBJLoad, FBXLoad, MathUtils, TextLoader, AudioListener, AudioLoader };
   };
 
   const setupSkin = () => {
@@ -2230,7 +2232,7 @@
         }
 
         async loadModel() {
-          const file = await requestFile(".glb,.gltf,.obj");
+          const file = await requestFile(".glb,.gltf,.obj,.fbx");
           runtime.extensionStorage[extensionID].models[file.name] = file.url;
           console.log(`File ${file.name} has loaded and has been added!`);
         }
@@ -2265,6 +2267,10 @@
 
             const data = new TextDecoder("utf-8").decode(file);
             add(three.OBJLoad.parse(data));
+
+          } else if (ext == "fbx") {
+
+            add(three.FBXLoad.parse(file));
 
           }
 
