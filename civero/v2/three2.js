@@ -878,16 +878,17 @@
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "red" },
                 },
               },
-              /*{
-                opcode: "setMaterialClipping",
+              //Blending modes!
+              {
+                opcode: "setMaterialBlending",
                 blockType: Scratch.BlockType.COMMAND,
-                text: "set material [NAME] clipping planes objects [DATA]",
+                text: "set material [NAME] to [DATA] blending",
                 color1: "#694D7C",
                 arguments: {
-                  DATA: { type: Scratch.ArgumentType.STRING, defaultValue: "[plane, plane2]"},
+                  DATA: { type: Scratch.ArgumentType.STRING, menu: "materialBlending"},
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "red" },
                 },
-              },*/
+              },
               {
                 opcode: "joinMaterial",
                 blockType: Scratch.BlockType.REPORTER,
@@ -1394,7 +1395,7 @@
                 { text: Scratch.translate("Polygon Offset Factor"), value: "polygonOffsetFactor" },
                 { text: Scratch.translate("Polygon Offset Units"), value: "polygonOffsetUnits" },
                 { text: Scratch.translate("Wireframe width"), value: "wireframeLinewidth" },
-                { text: Scratch.translate("Points: Size"), value: "wireframeLinewidth" },
+                { text: Scratch.translate("Points: Size"), value: "size" },
               ]},
               materialBooleanProperties: { items: [
                 { text: Scratch.translate("Visible"), value: "visible" },
@@ -1434,6 +1435,14 @@
                 { text: Scratch.translate("Front"), value: "0" },
                 { text: Scratch.translate("Back"), value: "1" },
                 { text: Scratch.translate("Double"), value: "2" },
+              ]},
+              materialBlending: { items: [
+                { text: Scratch.translate("None"), value: "0" },
+                { text: Scratch.translate("Normal"), value: "1" },
+                { text: Scratch.translate("Additive"), value: "2" },
+                { text: Scratch.translate("Subtractive"), value: "3" },
+                { text: Scratch.translate("Multiply"), value: "4" },
+                //{ text: Scratch.translate("Custom"), value: "5" }
               ]},
               textureProperties: { items: [
                 { text: Scratch.translate("Repeat (V2)"), value: "repeat" },
@@ -2052,6 +2061,11 @@
         setMaterial(args) {
           const material = assets.materials.get(args.NAME);
           if (!material) {console.warn(`No material named ${args.NAME}`); return;}
+          
+          if (args.PROPERTY == "blending" && args.DATA > 2) {
+            console.warn(`Premultiplied alpha is now on for material ${args.NAME}. Needed for blending type ${args.DATA}`);
+            material.premultipliedAlpha = true;
+          }
           material[args.PROPERTY] = args.DATA;
           material.needsUpdate = true;
         }
@@ -2070,6 +2084,11 @@
         }
         setMaterialSide(args) {
           args.PROPERTY = "side";
+          args.DATA = JSON.parse(args.DATA);
+          this.setMaterial(args);
+        }
+        setMaterialBlending(args) {
+          args.PROPERTY = "blending";
           args.DATA = JSON.parse(args.DATA);
           this.setMaterial(args);
         }
