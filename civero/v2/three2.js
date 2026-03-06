@@ -2544,7 +2544,6 @@ SOFTWARE.
 
           storedRaycast = new THREE.Raycaster();
           storedRaycast.set(v3, d3);
-          console.log(storedRaycast)
         }
         raycastCamera(args) {
           const v2 = new THREE.Vector2().fromArray(JSON.parse(args.XY));
