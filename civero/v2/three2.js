@@ -31,6 +31,7 @@
   const {TextGeometry} = await import ("https://esm.sh/three@0.182.0/addons/geometries/TextGeometry.js");
   const {OrbitControls} = await import("https://esm.sh/three@0.182.0/examples/jsm/controls/OrbitControls.js");
   const {GLTFLoader} = await import("https://esm.sh/three@0.182.0/addons/loaders/GLTFLoader.js");
+  const {OBJLoader} = await import("https://esm.sh/three@0.182.0/addons/loaders/OBJLoader.js");
   const {FontLoader} = await import ("https://esm.sh/three@0.182.0/addons/loaders/FontLoader.js");
   let opentype;
 
@@ -58,7 +59,8 @@
 
     const context = renderer.getContext();
     const TextureLoader = new THREE.TextureLoader();
-    const ModelLoader = new GLTFLoader();
+    const GLTFLoad = new GLTFLoader();
+    const OBJLoad = new OBJLoader();
     const TextLoader = new FontLoader();
     const MathUtils = THREE.MathUtils;
     const AudioListener = new THREE.AudioListener();
@@ -67,7 +69,7 @@
     const {RectAreaLightUniformsLib} = await import("https://esm.sh/three@0.182.0/addons/lights/RectAreaLightUniformsLib.js");
     RectAreaLightUniformsLib.init();
 
-    return { renderer, context, TextureLoader, ModelLoader, MathUtils, TextLoader, AudioListener, AudioLoader };
+    return { renderer, context, TextureLoader, GLTFLoad, OBJLoad, MathUtils, TextLoader, AudioListener, AudioLoader };
   };
 
   const setupSkin = () => {
@@ -1598,7 +1600,7 @@
                 const m = s.models;
                 if (!m) {s.models = {}; m = {};}
                 if (Object.keys(m).length == 0) return [["Load a model!"]];
-                return [Object.keys(m)];
+                return Object.keys(m).map(x=>[x]);
               }}, 
               loadedFonts: {items: () => {
                 const s = runtime.extensionStorage[extensionID] || null;
@@ -1606,7 +1608,7 @@
                 const m = s.fonts;
                 if (!m) {s.fonts = {}; m = {};}
                 if (Object.keys(m).length == 0) return [["Load a font!"]];
-                return [Object.keys(m)];
+                return Object.keys(m).map(x=>[x]);
               }},
             },
 
@@ -1972,6 +1974,7 @@
               material.forEach(m=>data.push(assets.materials.get(m) || defaultMat));}
               catch {data = assets.materials.get(material) || defaultMat;}
               obj.material = data;
+              obj.traverse(o=>o.material = data); //for models, not the best aproach but...
               break;
             default: obj[args.PROPERTY] = JSON.parse(args.DATA);
           }
@@ -2227,9 +2230,9 @@
         }
 
         async loadModel() {
-          const file = await requestFile(".glb,gltf");
+          const file = await requestFile(".glb,.gltf,.obj");
           runtime.extensionStorage[extensionID].models[file.name] = file.url;
-          vm.extensionManager.refreshBlocks();
+          console.log(`File ${file.name} has loaded and has been added!`);
         }
         async addModel(args) {
           if (args.NAME == "scene") {console.warn(`Don't name objects "scene"!`); return;}
@@ -2237,20 +2240,41 @@
           const url = runtime.extensionStorage[extensionID].models[args.FILE];
           if (!url) {console.warn(`No model named ${args.FILE}`); return;}
 
+          let ext = args.FILE.split(".");
+          ext = ext[ext.length-1];
+
           const response = await fetch(url);
           const file = await response.arrayBuffer();
-          console.log(response, file);
+          console.log(url, response, file);
 
           const group = new THREE.Group();
-          scene.add(group);
+          group.name = args.NAME;
+          if (assets.objects.get(args.NAME)) {
+            console.warn(`Object named ${args.NAME} already exists! Will replace!`);
+            assets.objects.get(args.NAME).removeFromParent();
+          }
           assets.objects.set(args.NAME, group);
+          scene.add(group);
 
-          three.ModelLoader.parse(file, "", (glb) => {
-            const model = glb.scene;
-            console.log(glb);
+          if (ext == "glb" || ext == "gltf") {
+
+            three.GLTFLoad.parse(file, "", (obj) => add(obj));
+
+          }
+          else if (ext == "obj") {
+
+            const data = new TextDecoder("utf-8").decode(file);
+            add(three.OBJLoad.parse(data));
+
+          }
+
+          function add(obj) {
+            const model = obj.scene || obj;
+            console.log(obj);
             group.add(model);
-            group.traverse(o=>{o.castShadow = true; o.receiveShadow = true;});
-          });
+            group.traverse(o=>{o.castShadow = true; o.receiveShadow = true; console.log(o.material)});
+          }
+
         }
         removeModel(args) {
           confirm(`Are you sure you want to delete ${args.FILE}?`) ? delete runtime.extensionStorage[extensionID].models[args.FILE] : null;
@@ -2270,6 +2294,10 @@
 
           const i = new THREE.InstancedMesh(g,mat,args.COUNT);
           i.instanceMatrix.setUsage( THREE.DynamicDrawUsage ); //should add a block to change this?? is it any harm leaving it like this?
+          if (assets.objects.get(args.NAME)) {
+            console.warn(`Object named ${args.NAME} already exists! Will replace!`);
+            assets.objects.get(args.NAME).removeFromParent();
+          }
           assets.objects.set(args.NAME, i);
           i.name = args.NAME;
           scene.add(i);
