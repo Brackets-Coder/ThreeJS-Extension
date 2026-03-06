@@ -1389,13 +1389,18 @@
                 { text: Scratch.translate("Emissive Intensity"), value: "emissiveIntensity" },
                 { text: Scratch.translate("Reflectivity"), value: "reflectivity" },
                 { text: Scratch.translate("Shininess"), value: "shininess" },
-                { text: Scratch.translate("Transmission"), value: "transmission" },
-                { text: Scratch.translate("Thickness"), value: "thickness" },
+                { text: Scratch.translate("Physical: Transmission"), value: "transmission" },
+                { text: Scratch.translate("Physical: Thickness"), value: "thickness" },
                 { text: Scratch.translate("Refraction Ratio"), value: "refractionRatio" },
                 { text: Scratch.translate("Polygon Offset Factor"), value: "polygonOffsetFactor" },
                 { text: Scratch.translate("Polygon Offset Units"), value: "polygonOffsetUnits" },
                 { text: Scratch.translate("Wireframe width"), value: "wireframeLinewidth" },
                 { text: Scratch.translate("Points: Size"), value: "size" },
+                { text: Scratch.translate("Physical: Anisotropy"), value: "anisotropy" },
+                { text: Scratch.translate("Physical: Anisotropy Rotation"), value: "anisotropyRotation" },
+                { text: Scratch.translate("Physical: Attenuation Distance"), value: "attenuationDistance" },
+                { text: Scratch.translate("Bump Scale"), value: "bumpScale" },
+                { text: Scratch.translate("Ambient Occlusion Texture Intensity"), value: "aoMapIntensity" },
               ]},
               materialBooleanProperties: { items: [
                 { text: Scratch.translate("Visible"), value: "visible" },
@@ -1417,7 +1422,8 @@
                 { text: Scratch.translate("Color"), value: "color" },
                 { text: Scratch.translate("Emissive"), value: "emissive" },
                 { text: Scratch.translate("Specular"), value: "specular" },
-                { text: Scratch.translate("Sheen"), value: "sheen" }
+                { text: Scratch.translate("Sheen"), value: "sheen" },
+                { text: Scratch.translate("Physical: Attenuation"), value: "attenuationColor" },
               ]},
               materialMapProperties: { items: [
                 { text: Scratch.translate("Texture"), value: "map" },
@@ -1429,6 +1435,7 @@
                 { text: Scratch.translate("Environment Texture"), value: "envMap" },
                 { text: Scratch.translate("Ambient Occlusion Texture"), value: "aoMap" },
                 { text: Scratch.translate("Bump Texture"), value: "bumpMap" },
+                { text: Scratch.translate("Physical: Anisotropy Texture"), value: "anisotropyMap" },
                 { text: Scratch.translate("Displacement Texture"), value: "displacementMap" }
               ]},
               materialSides: { items: [
