@@ -87,8 +87,8 @@
 
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
         this.onNativeSizeChanged();
       }
@@ -99,22 +99,19 @@
 
       updateTexture(data) {
         const gl = this._renderer.gl;
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
         gl.bindTexture(gl.TEXTURE_2D, this._texture);
 
-        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-        gl.texSubImage2D(
+        gl.texImage2D(
           gl.TEXTURE_2D,
           0,
-          0,
-          0,
-          width,
-          height,
+          gl.RGBA,
           gl.RGBA,
           gl.UNSIGNED_BYTE,
-          data
+          three.renderer.domElement
         );
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-
+        this._silhouette.update(three.renderer.domElement);
         this.emitWasAltered();
       }
 
@@ -130,16 +127,6 @@
 
         three.renderer.setSize(width, height);
 
-        rawBuffer = new ArrayBuffer(
-          width * height * 4,
-        );
-        gpuView = new Uint8Array(rawBuffer);
-        renderData = new ImageData(
-          new Uint8ClampedArray(rawBuffer),
-          width,
-          height
-        );
-
         if (camera) {
           const [width, height] = this._nativeSize;
           if (camera.isPerspectiveCamera) {
@@ -153,21 +140,7 @@
           camera.updateProjectionMatrix();
         }
 
-        const gl = this._renderer.gl;
-        gl.bindTexture(gl.TEXTURE_2D, this._texture);
-        gl.texImage2D(
-          gl.TEXTURE_2D,
-          0,
-          gl.RGBA,
-          width,
-          height,
-          0,
-          gl.RGBA,
-          gl.UNSIGNED_BYTE,
-          null,
-        );
-
-        this.emitWasAltered();
+        this.updateTexture();
       }
 
       onNativeSizeChanged() {
@@ -194,7 +167,9 @@
     const threeDrawableId = renderer.createDrawable("pen");
     renderer.updateDrawableSkinId(threeDrawableId, three.skin.id);
     renderer._allDrawables[threeDrawableId].customDrawableName = "Three Layer";
-    renderer._allDrawables[threeDrawableId].updateScale([100,-100]); //Y flip
+    if (renderer.markDrawableAsNoninteractive) {
+      renderer.markDrawableAsNoninteractive(threeDrawableId);
+    }
   };
 
   async function init() {
@@ -262,16 +237,7 @@
     if (camera && scene) {
       three.renderer.render(scene, camera);
 
-      three.context.readPixels(
-        0,
-        0,
-        width,
-        height,
-        three.context.RGBA,
-        three.context.UNSIGNED_BYTE,
-        gpuView,
-      );
-      three.skin.updateTexture(renderData);
+      three.skin.updateTexture();
       renderer.dirty = true;
     }
 
