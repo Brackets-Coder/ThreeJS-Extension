@@ -54,6 +54,7 @@
       preserveDrawingBuffer: true,
       antialias: true,
       alpha: true,
+      logarithmicDepthBuffer: true,
     });
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = 1;
@@ -1359,7 +1360,8 @@
               geometryProperties: { items: [
                 { text: Scratch.translate("Vertex Points [XYZ]"), value: "position" },
                 { text: Scratch.translate("Texture Points [UV]"), value: "uv" },
-                { text: Scratch.translate("Face Points (Normals) [XYZ]"), value: "normal" }
+                { text: Scratch.translate("Face Points (Normals) [XYZ]"), value: "normal" },
+                { text: Scratch.translate("Vertex Colors [RGB]"), value: "color" },
               ]},
               materialType: { items: [
                 {text: Scratch.translate("Mesh Basic"), value: "MeshBasicMaterial"},
@@ -2029,21 +2031,21 @@
           data = JSON.parse(args.DATA); //.split(" ").map(p=>JSON.parse(p)).flat(); //from [0,0,0] [0,0,1] to 0,0,0,0,0,1
 
           switch (args.PROPERTY) {
-            case "position" || "normal":
-              dataLength = 3; //v3
-              break;
             case "uv":
               dataLength = 2;
               break;
+            default:
+              dataLength = 3;
           }
-
+          console.log(args.PROPERTY, new THREE.BufferAttribute(new Float32Array(data), dataLength))
           geometry.setAttribute(args.PROPERTY, new THREE.BufferAttribute(new Float32Array(data), dataLength));
         }
         getGeometry(args) {
           const geometry = assets.geometries.get(args.NAME);
           if (!geometry) {console.warn(`No geometry named ${args.NAME}`); return;}
 
-          const a = geometry.getAttribute(args.PROPERTY).array;
+          let a = geometry.getAttribute(args.PROPERTY);
+          if (a) a=a.array; else return null;
           /* for custom output [0,0,0] [0,0,1] [1,0,1]
           const result = [];
           for (let i = 0; i < a.length; i += 3) {
