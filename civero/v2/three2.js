@@ -1,6 +1,6 @@
 // Name: ThreeJS
 // ID: turboThree
-// Description: Blocks for creating and manipulating 3D objects using the Three.js library. (insert better description here).
+// Description: Blocks for creating and manipulating 3D scenes, objects, audio, materials, geometries and more using the Three.js library and addons.
 // By: Civero <https://scratch.mit.edu/users/Civero/>
 // By: -MasterMath- <https://scratch.mit.edu/users/-MasterMath-/>
 // By: Drago-Cuven <https://scratch.mit.edu/users/DragoCuven/>
@@ -37,7 +37,6 @@
   let opentype;
 
   let three, loopId, clock, defaultGeo, defaultMat, storedFog, storedRaycast;
-  let rawBuffer, gpuView, renderData;
   let scene, camera;
 
   let assets = {
@@ -141,6 +140,8 @@
         }
 
         this.updateTexture();
+        
+        dispatchEvent(new CustomEvent("ThreeJS-sizeChange", {size: this._size}));
       }
 
       onNativeSizeChanged() {
@@ -209,6 +210,8 @@
       get clock() {
         return clock;
       },
+      stealedRender: false,
+      onRender: [],
     };
 
     runtime.on("STAGE_SIZE_CHANGED", () =>
@@ -235,7 +238,8 @@
 
   const render = () => {
     if (camera && scene) {
-      three.renderer.render(scene, camera);
+      if (!_ThreeJS_.stealedRender) three.renderer.render(scene, camera);
+      _ThreeJS_.onRender.forEach(f => f());
 
       three.skin.updateTexture();
       renderer.dirty = true;
@@ -291,7 +295,7 @@
             color2: "#30323D",
             color3: "#606060",
             menuIconURI: "data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHdpZHRoPSIyMTQiIGhlaWdodD0iMjE0IiB2aWV3Qm94PSIwLDAsMjE0LDIxNCI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTEzMywtNzMpIj48ZyBzdHJva2UtbWl0ZXJsaW1pdD0iMTAiPjxwYXRoIGQ9Ik0xMzMsMTgwYzAsLTU5LjA5NDQ3IDQ3LjkwNTUzLC0xMDcgMTA3LC0xMDdjNTkuMDk0NDcsMCAxMDcsNDcuOTA1NTMgMTA3LDEwN2MwLDU5LjA5NDQ3IC00Ny45MDU1MywxMDcgLTEwNywxMDdjLTU5LjA5NDQ3LDAgLTEwNywtNDcuOTA1NTMgLTEwNywtMTA3eiIgZmlsbD0iIzE5MTkxOSIgZmlsbC1ydWxlPSJub256ZXJvIiBzdHJva2U9IiM1Y2Q0OTgiIHN0cm9rZS13aWR0aD0iMCIgc3Ryb2tlLWxpbmVqb2luPSJtaXRlciIvPjxnIGZpbGw9Im5vbmUiIGZpbGwtcnVsZT0iZXZlbm9kZCIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0yMTEuNTk4LDI4MC40N2wtNDMuMjEzLC0xNzQuOTRsMTczLjIzLDQ5Ljg3NHoiLz48cGF0aCBkPSJNMjU0Ljk2OCwxMzAuNDcybDIxLjU5MSw4Ny40OTZsLTg2LjU2NywtMjQuOTQ1eiIvPjxwYXRoIGQ9Ik0yMzMuNDg4LDIwNC44OWwtMTAuNzI0LC00My40NjVsNDMuMDA4LDEyLjM0NnoiLz48cGF0aCBkPSJNMjEyLjAzNiwxMTguMDEzbDEwLjcyNCw0My40NjVsLTQzLjAwOCwtMTIuMzQ2eiIvPjxwYXRoIGQ9Ik0yOTguMDQ4LDE0Mi43OWwxMC43MjQsNDMuNDY1bC00My4wMDgsLTEyLjM0NnoiLz48cGF0aCBkPSJNMjMzLjQ5MywyMDQuOTJsMTAuNzI0LDQzLjQ2NWwtNDMuMDA4LC0xMi4zNDZ6Ii8+PC9nPjwvZz48L2c+PC9zdmc+",
-            docsURI: "https://civ3ro.github.io",
+            docsURI: "https://github.com/Brackets-Coder/ThreeJS-Extension",
             blocks: [
 
               {
@@ -1667,6 +1671,7 @@
           }
 
           three.renderer.clear();
+          dispatchEvent(new CustomEvent("ThreeJS-Reset"));
         }
 
         stats(args) {
@@ -1939,6 +1944,7 @@
           three.AudioListener.removeFromParent();
           selected.add(three.AudioListener);
           camera = selected;
+          dispatchEvent(new CustomEvent("ThreeJS-cameraChange"));
         }
 
         camera() {return [...assets.objects.entries()].find(([key, value]) => value === camera)?.[0];}
@@ -2003,7 +2009,6 @@
             default:
               dataLength = 3;
           }
-          console.log(args.PROPERTY, new THREE.BufferAttribute(new Float32Array(data), dataLength))
           geometry.setAttribute(args.PROPERTY, new THREE.BufferAttribute(new Float32Array(data), dataLength));
         }
         getGeometry(args) {
@@ -2272,7 +2277,8 @@
             const model = obj.scene || obj;
             console.log(obj);
             group.add(model);
-            group.traverse(o=>{o.castShadow = true; o.receiveShadow = true; console.log(o.material)});
+            group.traverse(o=>{o.castShadow = true; o.receiveShadow = true;});
+            //material customization support?
           }
 
         }
