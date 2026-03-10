@@ -53,7 +53,7 @@
       preserveDrawingBuffer: true,
       antialias: true,
       alpha: true,
-      logarithmicDepthBuffer: true,
+      //logarithmicDepthBuffer: true,
     });
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = 1;
@@ -210,7 +210,7 @@
       get clock() {
         return clock;
       },
-      stealedRender: false,
+      stolenRender: false,
       onRender: [],
     };
 
@@ -238,7 +238,7 @@
 
   const render = () => {
     if (camera && scene) {
-      if (!_ThreeJS_.stealedRender) three.renderer.render(scene, camera);
+      if (!_ThreeJS_.stolenRender) three.renderer.render(scene, camera);
       _ThreeJS_.onRender.forEach(f => f());
 
       three.skin.updateTexture();
