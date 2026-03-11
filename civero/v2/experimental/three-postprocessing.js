@@ -58,7 +58,6 @@
     RenderPass,
     EffectPass,
     Effect,
-    BlendMode,
 
     FXAAEffect,
     SMAAEffect,
@@ -68,6 +67,8 @@
 
     BloomEffect,
     SelectiveBloomEffect,
+    GodRaysEffect,
+
     SSAOEffect,
     DepthEffect,
     TextureEffect,
@@ -84,10 +85,6 @@
     PixelationEffect,
     NoiseEffect,
     GlitchEffect,
-    BrightnessContrastEffect,
-    HueSaturationEffect,
-    ColorAverageEffect,
-    SepiaEffect,
 
     LUT3DEffect,
 
@@ -138,7 +135,7 @@
         composer.setSize(...three.skin._nativeSize);
       } else {
         const a = three.skin._size[0] / three.skin._size[1]; //using this extension makes it look like its always in hqp...
-      composer.setSize(960*a, 720);
+      composer.setSize(720*a, 720);
       }
     });
   }
@@ -288,6 +285,179 @@
                 }
               },
               "---",
+              {
+                opcode: "godrays",
+                blockType: "command",
+                text: "add GodRays [ID] from object [NAME]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                  NAME: {type: "string", defaultValue: "sun"},
+                }
+              },
+              {
+                opcode: "setGodrays",
+                blockType: "command",
+                text: "set GodRays [ID] [PROPERTY] to [VALUE]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                  PROPERTY: {type: "string", menu: "godrays"},
+                  VALUE: {type: "string", defaultValue: "60"},
+                }
+              },
+              "---",
+              {
+                opcode: "glitch",
+                blockType: "command",
+                text: "add Glitch [ID]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                }
+              },
+              {
+                opcode: "setGlitch",
+                blockType: "command",
+                text: "set Glitch [ID] [PROPERTY] to [VALUE]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                  PROPERTY: {type: "string", menu: "glitch"},
+                  VALUE: {type: "string", defaultValue: "[1,2]"},
+                }
+              },
+              "---",
+              {
+                opcode: "grid",
+                blockType: "command",
+                text: "add Grid [ID]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                }
+              },
+              {
+                opcode: "setGrid",
+                blockType: "command",
+                text: "set Grid [ID] [PROPERTY] to [VALUE]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                  PROPERTY: {type: "string", menu: "grid"},
+                  VALUE: {type: "string", defaultValue: "1"},
+                }
+              },
+              "---",
+              {
+                opcode: "dotScreen",
+                blockType: "command",
+                text: "add Dot Screen [ID]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                }
+              },
+              {
+                opcode: "setDotScreen",
+                blockType: "command",
+                text: "set Dot Screen [ID] [PROPERTY] to [VALUE]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                  PROPERTY: {type: "string", menu: "dotScreen"},
+                  VALUE: {type: "string", defaultValue: "1"},
+                }
+              },
+              "---",
+              {
+                opcode: "pixel",
+                blockType: "command",
+                text: "add Pixelation [ID]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                }
+              },
+              {
+                opcode: "setPixel",
+                blockType: "command",
+                text: "set Pixelation [ID] granularity to [VALUE]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                  VALUE: {type: "number", defaultValue: 1},
+                }
+              },
+              "---",
+              {
+                opcode: "noise",
+                blockType: "command",
+                text: "add Noise [ID]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                }
+              },
+              "---",
+              {
+                opcode: "scanline",
+                blockType: "command",
+                text: "add Scanline [ID]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                }
+              },
+              {
+                opcode: "setScanline",
+                blockType: "command",
+                text: "set Scanline [ID] [PROPERTY] to [VALUE]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                  PROPERTY: {type: "string", menu: "scanline"},
+                  VALUE: {type: "number", defaultValue: 1},
+                }
+              },
+              "---",
+              {
+                opcode: "texture",
+                blockType: "command",
+                text: "add Texture [ID] from [TEXTURE]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                  TEXTURE: {type: "string", defaultValue: "glass"},
+                }
+              },
+              "---",
+              {
+                opcode: "vignette",
+                blockType: "command",
+                text: "add Vignette [ID]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                  TEXTURE: {type: "string", defaultValue: "glass"},
+                }
+              },
+              {
+                opcode: "setVignette",
+                blockType: "command",
+                text: "set Vignette [ID] [PROPERTY] to [VALUE]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                  PROPERTY: {type: "string", menu: "vignette"},
+                  VALUE: {type: "number", defaultValue: 1},
+                }
+              },
+              "---",
+              {
+                opcode: "fxaa",
+                blockType: "command",
+                text: "add FXAA [ID]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                  TEXTURE: {type: "string", defaultValue: "glass"},
+                }
+              },
+              {
+                opcode: "setVignette",
+                blockType: "command",
+                text: "set Vignette [ID] [PROPERTY] to [VALUE]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                  PROPERTY: {type: "string", menu: "vignette"},
+                  VALUE: {type: "number", defaultValue: 1},
+                }
+              },
+              "---",
             ],
             menus: {
               blending: {items: [
@@ -363,6 +533,43 @@
                 { text: Scratch.translate("Teal 66"), value: "2" },
                 { text: Scratch.translate("Chemical 168"), value: "3" },
                 { text: Scratch.translate("Clayton 33"), value: "4" },
+              ]},
+              godrays: {items: [
+                { text: Scratch.translate("Samples"), value: "samples" },
+                { text: Scratch.translate("Density"), value: "density" },
+                { text: Scratch.translate("Decay"), value: "decay" },
+                { text: Scratch.translate("Weight"), value: "weight" },
+                { text: Scratch.translate("Exposure"), value: "exposure" },
+                { text: Scratch.translate("Clamp Max"), value: "clampMax" },
+                { text: Scratch.translate("Blur (boolean)"), value: "blur" },
+                { text: Scratch.translate("Kernel Size"), value: "kernelSize" }
+              ]},
+              glitch: {items: [
+                { text: Scratch.translate("Chromatic Aberration Offset (V2)"), value: "chromaticAberrationOffset" },
+                { text: Scratch.translate("Glitch Delay (Min/Max) (V2)"), value: "delay" },
+                { text: Scratch.translate("Glitch Duration (Min/Max) (V2)"), value: "duration" },
+                { text: Scratch.translate("Glitch Strength (Min/Max) (V2)"), value: "strength" },
+                { text: Scratch.translate("Columns"), value: "columns" },
+                { text: Scratch.translate("Ratio"), value: "ratio" },
+                { text: Scratch.translate("Perturbation Map (Texture)"), value: "perturbationMap" },
+                { text: Scratch.translate("Distortion Size (dtSize)"), value: "dtSize" }
+              ]},
+              grid: {items: [
+                { text: Scratch.translate("Scale"), value: "scale" },
+                { text: Scratch.translate("Line Width"), value: "lineWidth" }
+              ]},
+              dotScreen: {items: [
+                { text: Scratch.translate("Scale"), value: "scale" },
+                { text: Scratch.translate("Angle"), value: "angle" }
+              ]},
+              scanline: {items: [
+                { text: Scratch.translate("Density"), value: "density" },
+                { text: Scratch.translate("Scroll Speed"), value: "scrollSpeed" }
+              ]},
+              vignette: {items: [
+                { text: Scratch.translate("Offset"), value: "offset" },
+                { text: Scratch.translate("Technique (1-0)"), value: "technique" },
+                { text: Scratch.translate("Darkness"), value: "darkness" }
               ]},
             },
           };
@@ -514,6 +721,103 @@
           });
 
           this.addPass(new LUT3DEffect(lutTexture), args);
+        }
+
+        godrays(args) {
+          const source = assets.objects.get(args.NAME);
+          if (!source) {console.warn(`Can't find object named ${args.NAME}`); return;}
+          this.addPass(new GodRaysEffect(camera, source, {
+            samples: 50,
+            density: 0.96,
+            decay: 0.92,
+            weight: 0.6,
+            exposure: 0.8,
+            clampMax: 1.0,
+            blur: true,
+            kernelSize: 1,
+          }), args);
+        }
+        setGodrays(args) {
+          const e = this.getEffect(args); if (!e) return;
+          args.VALUE = JSON.parse(args.VALUE);
+
+          switch (args.PROPERTY) {
+            case "density":
+            case "decay":
+            case "weight":
+            case "exposure":
+            case "clampMax":
+              e.godRaysMaterial.uniforms[args.PROPERTY].value = args.VALUE;
+              break;
+            default: e[args.PROPERTY] = args.VALUE;
+          }
+        }
+        
+        glitch(args) {
+          this.addPass(new GlitchEffect(), args);
+        }
+        setGlitch(args) {
+          const e = this.getEffect(args); if (!e) return;
+          let v2;
+
+          switch (args.PROPERTY) {
+            case "chromaticAberrationOffset":
+              v2 = new THREE.Vector2(...JSON.parse(args.VALUE));
+              e.setChromaticAberrationOffset(v2);
+              break;
+            case "delay":
+            case "duration":
+            case "strength":
+              v2 = new THREE.Vector2(...JSON.parse(args.VALUE));
+              e[args.PROPERTY] = v2;
+              break;
+            case "perturbationMap":
+              const t = assets.textures.get(args.VALUE); if (!t) return;
+              e.perturbationMap = t;
+              break;
+            default: e[args.PROPERTY] = JSON.parse(args.VALUE);
+          }
+        }
+
+        grid(args) {
+          this.addPass(new GridEffect(), args);
+        }
+        setGrid(args) {
+          const e = this.getEffect(args); if (!e) return;
+          e[args.PROPERTY] = JSON.parse(args.VALUE);
+        }
+        dotScreen(args) {
+          this.addPass(new DotScreenEffect(), args);
+        }
+        setDotScreen(args) {
+          const e = this.getEffect(args); if (!e) return;
+          e[args.PROPERTY] = JSON.parse(args.VALUE);
+        }
+
+        pixel(args) { this.addPass(new PixelationEffect(), args); }
+        setPixel(args) {
+          const e = this.getEffect(args); if (!e) return;
+          e.granularity = JSON.parse(args.VALUE);
+        }
+
+        noise(args) { this.addPass(new NoiseEffect({premultiply: true}), args); }
+
+        scanline(args) { this.addPass(new ScanlineEffect(), args); }
+        setScanline(args) {
+          const e = this.getEffect(args); if (!e) return;
+          e[args.PROPERTY] = JSON.parse(args.VALUE);
+        }
+
+        texture(args) {
+          const texture = assets.textures.get(args.TEXTURE);
+          if (!texture) {console.warn(`Can't find texture named ${args.TEXTURE}`); return;}
+          this.addPass(new TextureEffect({texture: texture}), args);
+        }
+
+        vignette(args) { this.addPass(new VignetteEffect(), args); }
+        setVignette(args) {
+          const e = this.getEffect(args); if (!e) return;
+          e[args.PROPERTY] = JSON.parse(args.VALUE);
         }
 
       }
