@@ -19,6 +19,7 @@
   }
 
   const vm = Scratch.vm;
+  const cast = Scratch.Cast;
   const renderer = vm.renderer;
   const runtime = vm.runtime;
 
@@ -44,6 +45,7 @@
     geometries: new Map(),
     materials: new Map(),
     textures: new Map(),
+    renderTargets: new Map(),
     addons: new Map(),
     audios: new Map(),
   };
@@ -57,6 +59,7 @@
     });
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = 1;
+    renderer.setClearColor( new THREE.Color("#fff"), 0.4 );
 
     const context = renderer.getContext();
     const TextureLoader = new THREE.TextureLoader();
@@ -236,10 +239,12 @@
     };
   }
 
-  const render = () => {
+  const render = (onlyUpdate) => {
     if (camera && scene) {
-      if (!_ThreeJS_.stolenRender) three.renderer.render(scene, camera);
-      _ThreeJS_.onRender.forEach(f => f());
+      if (!onlyUpdate) {
+        if (!_ThreeJS_.stolenRender) three.renderer.render(scene, camera);
+        _ThreeJS_.onRender.forEach(async f => await f());
+      }
 
       three.skin.updateTexture();
       renderer.dirty = true;
@@ -367,7 +372,7 @@
               {
                 opcode: "rendererRender",
                 blockType: "command",
-                text: "render",
+                text: "render to stage",
               },
               
               {
@@ -731,6 +736,18 @@
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "cube" },
                 },
               },
+              {
+                opcode: "createPlaneGeometry",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "create plane geometry named [NAME] segments: x [X] y [Y]",
+                color1: "#7c4d5e",
+                arguments: {
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "plane" },
+                  X: { type: Scratch.ArgumentType.NUMBER, defaultValue: 5 },
+                  Y: { type: Scratch.ArgumentType.NUMBER, defaultValue: 5 },
+                },
+              },
+              "---",
               {
                 opcode: "setGeometry",
                 blockType: Scratch.BlockType.COMMAND,
@@ -1184,6 +1201,30 @@
               "---",
 
               {blockType: "label",
+              text: Scratch.translate("Render Target")},
+
+              {
+                opcode: "renderTarget",
+                blockType: "command",
+                text: "create Render Target [TEXTURE] size [W][H]",
+                arguments: {
+                  TEXTURE: { type: Scratch.ArgumentType.STRING, defaultValue: "screen"},
+                  W: { type: Scratch.ArgumentType.NUMBER, defaultValue: 256},
+                  H: { type: Scratch.ArgumentType.NUMBER, defaultValue: 256},
+                }
+              },
+              {
+                opcode: "textureRender",
+                blockType: "command",
+                text: "render to Render Target [TEXTURE] texture",
+                arguments: {
+                  TEXTURE: { type: Scratch.ArgumentType.STRING, defaultValue: "screen"},
+                }
+              },
+
+              "---",
+
+              {blockType: "label",
               text: Scratch.translate("Addons")},
 
               {
@@ -1313,6 +1354,7 @@
               ]},
               geometryType: { items: [
                 { text: Scratch.translate("Empty"), value: "BufferGeometry" },
+                { text: Scratch.translate("Point"), value: "Point" },
                 { text: Scratch.translate("Cube"), value: "BoxGeometry" },
                 { text: Scratch.translate("Capsule"), value: "CapsuleGeometry" },
                 { text: Scratch.translate("Circle"), value: "CircleGeometry" },
@@ -1321,7 +1363,7 @@
                 { text: Scratch.translate("Dodecahedron"), value: "DodecahedronGeometry" },
                 { text: Scratch.translate("Icosahedron"), value: "IcosahedronGeometry" },
                 { text: Scratch.translate("Octahedron"), value: "OctahedronGeometry" },
-                { text: Scratch.translate("Plane"), value: "PlaneGeometry" },
+                //{ text: Scratch.translate("Plane"), value: "PlaneGeometry" },
                 { text: Scratch.translate("Sphere"), value: "SphereGeometry" },
                 { text: Scratch.translate("Tetrahedron"), value: "TetrahedronGeometry" },
                 { text: Scratch.translate("Torus"), value: "TorusGeometry" },
@@ -1525,7 +1567,7 @@
                 { text: Scratch.translate("height"), value: "height" }         
               ]},
               lightShadow: {items: [
-                { text: Scratch.translate("Scale"), value: "scale" },
+                { text: Scratch.translate("Quality Scale"), value: "scale" },
                 { text: Scratch.translate("Blur"), value: "radius" },
                 { text: Scratch.translate("Instensity"), value: "intensity" }    
               ]},
@@ -1627,6 +1669,9 @@
               assets.textures.forEach(
                 o => o.dispose()
               );
+              assets.renderTargets.forEach(
+                o => o.dispose()
+              );
               assets.addons.get("orbitControls") ? assets.addons.get("orbitControls").dispose() : null;
 
               assets.objects.clear();
@@ -1635,6 +1680,7 @@
               assets.textures.clear();
               assets.addons.clear();
               assets.audios.clear();
+              assets.renderTargets.clear();
               scene.clear();
               scene.fog = null;
               scene.overrideMaterial = null;
@@ -1671,6 +1717,7 @@
           }
 
           three.renderer.clear();
+          render(true);
           dispatchEvent(new CustomEvent("ThreeJS-Reset"));
         }
 
@@ -1699,10 +1746,10 @@
         }
         rendererClear(args) {
           three.renderer[args.B]();
-          render();
         }
         rendererRender(args) {
-          render(); //future physics, should change this to a step() method instead? or will it work like this?º
+          three.renderer.render(scene, camera); //no postprocessing then? idk...
+          render(true);
         }
         rendererShadow(args) {
           three.renderer.shadowMap.type = JSON.parse(args.PROPERTY);
@@ -1792,8 +1839,8 @@
           let v3;
 
           if (args.TRANSFORM == "getWorldPosition" || args.TRANSFORM == "getWorldDirection") {
-            v3 = obj[args.TRANSFORM](new THREE.Vector3);
-            v3.toArray();
+            v3 = obj[args.TRANSFORM](new THREE.Vector3());
+            v3 = [v3.x, v3.y, v3.z];
           } else v3 = obj[args.TRANSFORM].toArray();
           args.TRANSFORM == "rotation" || args.TRANSFORM == "getWorldDirection" ? v3 = v3.slice(0,3).map(r=> THREE.MathUtils.radToDeg(r)) : null;
 
@@ -1923,6 +1970,13 @@
               obj.shadow.map.dispose();
               obj.shadow.map = null;
             }
+            if (obj.shadow.camera) {
+              obj.shadow.camera.top = 50;
+              obj.shadow.camera.bottom = -50;
+              obj.shadow.camera.right = 50;
+              obj.shadow.camera.left = -50;
+              obj.shadow.camera.updateProjectionMatrix();
+            }
           }
 
           obj.name = args.NAME;
@@ -1991,7 +2045,20 @@
             console.warn(`Already existing geometry named "${args.NAME}". Will replace!`);
             geometry.dispose();
           }
-          geometry = new THREE[args.TYPE]();
+          if (args.TYPE == "Point") {
+            geometry = new THREE.BufferGeometry();
+            geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array([0,0,0]), 3));
+          }
+          else geometry = new THREE[args.TYPE]();
+          assets.geometries.set(args.NAME, geometry);
+        }
+        createPlaneGeometry(args) {
+          let geometry = assets.geometries.get(args.NAME);
+          if (geometry) {
+            console.warn(`Already existing geometry named "${args.NAME}". Will replace!`);
+            geometry.dispose();
+          }
+          geometry = new THREE.PlaneGeometry(args.X, args.Y, args.X, args.Y);
           assets.geometries.set(args.NAME, geometry);
         }
 
@@ -2000,7 +2067,7 @@
           if (!geometry) {console.warn(`No geometry named ${args.NAME}`); return;}
 
           let data, dataLength;
-          data = JSON.parse(args.DATA); //.split(" ").map(p=>JSON.parse(p)).flat(); //from [0,0,0] [0,0,1] to 0,0,0,0,0,1
+          data = cast.toArray(args.DATA);
 
           switch (args.PROPERTY) {
             case "uv":
@@ -2010,6 +2077,8 @@
               dataLength = 3;
           }
           geometry.setAttribute(args.PROPERTY, new THREE.BufferAttribute(new Float32Array(data), dataLength));
+
+          if (args.PROPERTY == "position") geometry.computeVertexNormals();
         }
         getGeometry(args) {
           const geometry = assets.geometries.get(args.NAME);
@@ -2306,6 +2375,7 @@
           }
           assets.objects.set(args.NAME, i);
           i.name = args.NAME;
+          i.castShadow = true; i.receiveShadow = true;
           scene.add(i);
         }
 
@@ -2596,6 +2666,43 @@ SOFTWARE.
 
           const r = storedRaycast.intersectObject( obj );
           return r.length ? true : false;
+        }
+
+        renderTarget(args) {
+          let rT = assets.renderTargets.get(args.TEXTURE);
+          if (rT) {console.warn(`A Render Target named ${args.TEXTURE} already exists. Will replace!`); rT.dispose();}
+            rT = new THREE.WebGLRenderTarget(args.W, args.H, {
+              colorSpace: "srgb",
+              anisotropy: 2,
+            });
+            assets.renderTargets.set(args.TEXTURE, rT);
+        }
+
+        textureRender(args) {
+          let rT = assets.renderTargets.get(args.TEXTURE);
+          if (!rT) {console.warn(`No Render Target named ${args.TEXTURE}`); return;}
+          if (assets.textures.get(args.TEXTURE) != rT.texture && assets.textures.get(args.TEXTURE)) {console.warn(`A texture named ${args.TEXTURE} already exists!`); return;}
+          
+          const aspect = camera.aspect;
+          camera.aspect = rT.width / rT.height;
+          camera.updateProjectionMatrix();
+
+          three.renderer.setRenderTarget(rT);
+          render(); 
+          three.renderer.setRenderTarget(null);
+          
+          camera.aspect = aspect;
+          camera.updateProjectionMatrix();
+
+          if (!assets.textures.get(args.TEXTURE)) {
+            //rT.texture.flipY = false; doesnt work!
+
+            rT.texture.wrapT = THREE.RepeatWrapping;
+            rT.texture.repeat.y = -1;
+            rT.texture.offset.y = 1;
+
+            assets.textures.set(args.TEXTURE,  rT.texture);
+          }
         }
       
       }

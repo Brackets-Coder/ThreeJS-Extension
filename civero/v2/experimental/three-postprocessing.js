@@ -25,30 +25,7 @@
   const extensionID = "threejsPostprocessingAddon";
   const extensionIcon = "data:image/png;base64,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";
 
-  let width, height;
-  let lastCanvas;
-
   const THREE = _ThreeJS_.THREE;
-  /*let root = "https://esm.sh/three@0.182.0/examples/jsm/postprocessing/";
-  const {EffectComposer} = await import(root+"EffectComposer.js");
-  const {RenderPass} = await import(root+"RenderPass.js");
-  const { OutputPass } =  await import(root+"OutputPass.js");
-
-  const { HalftonePass } =  await import(root+"HalftonePass.js");
-
-  const { GlitchPass } =  await import(root+"GlitchPass.js");
-  //const { BloomPass } = await import(root+"BloomPass.js");
-  const { FilmPass } =  await import(root+"FilmPass.js");
-  const { OutlinePass } =  await import(root+"OutlinePass.js");
-  const { DotScreenPass } =  await import(root+"DotScreenPass.js");
-  const { AfterimagePass } =  await import(root+"AfterimagePass.js");
-
-  const { FXAAPass } =  await import(root+"FXAAPass.js");
-  const { SMAAPass } =  await import(root+"SMAAPass.js");
-  const { SAOPass } =  await import(root+"SAOPass.js");
-  const { GTAOPass } =  await import(root+"GTAOPass.js");
-  const { TAARenderPass } =  await import(root+"TAARenderPass.js");
-  const { SSAARenderPass } =  await import(root+"SSAARenderPass.js");*/
 
   //https://github.com/mrdoob/three.js/tree/dev/examples/jsm/postprocessing
   //https://github.com/pmndrs/postprocessing more effects
@@ -57,29 +34,33 @@
     EffectComposer,
     RenderPass,
     EffectPass,
-    Effect,
 
     FXAAEffect,
     SMAAEffect,
-    GammaCorrectionEffect,
     ToneMappingEffect,
     ColorDepthEffect,
+    ColorAverageEffect,
+    BrightnessContrastEffect,
 
     BloomEffect,
     SelectiveBloomEffect,
     GodRaysEffect,
 
     SSAOEffect,
+    NormalPass,
+    DepthDownsamplingPass,
+
     DepthEffect,
     TextureEffect,
-
-    DepthOfFieldEffect,
-    BokehEffect,
+    DepthOfFieldEffect, //not workingggg :(
+    
     ChromaticAberrationEffect,
     VignetteEffect,
     ScanlineEffect,
 
     ASCIIEffect,
+    ASCIITexture,
+
     DotScreenEffect,
     GridEffect,
     PixelationEffect,
@@ -142,18 +123,7 @@
 
   const render = () => {
     if (camera && scene) {
-      //three.renderer.render(scene, camera);
       composer.render();
-
-      three.skin.updateTexture();
-      renderer.dirty = true;
-    }
-
-    const canvas = `${renderer.canvas.width}x${renderer.canvas.height}`;
-
-    if (lastCanvas !== canvas) {
-      lastCanvas = canvas;
-      three.skin.updateSize();
     }
   };
 
@@ -424,7 +394,6 @@
                 text: "add Vignette [ID]",
                 arguments: {
                   ID: {type: "string", defaultValue: "effect"},
-                  TEXTURE: {type: "string", defaultValue: "glass"},
                 }
               },
               {
@@ -444,22 +413,147 @@
                 text: "add FXAA [ID]",
                 arguments: {
                   ID: {type: "string", defaultValue: "effect"},
-                  TEXTURE: {type: "string", defaultValue: "glass"},
+                }
+              },
+              "---",
+              {
+                opcode: "smaa",
+                blockType: "command",
+                text: "add SMAA [ID] [SMAAPreset] [EdgeDetectionMode] [PredicationMode]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                  SMAAPreset: {type: "string", menu: "SMAAPreset"},
+                  EdgeDetectionMode: {type: "string", menu: "EdgeDetectionMode"},
+                  PredicationMode: {type: "string", menu: "PredicationMode"},
+                }
+              },
+              "---",
+              {
+                opcode: "ascii",
+                blockType: "command",
+                text: "add ASCII [ID]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
                 }
               },
               {
-                opcode: "setVignette",
+                opcode: "setAscii",
                 blockType: "command",
-                text: "set Vignette [ID] [PROPERTY] to [VALUE]",
+                text: "set ASCII [ID] [PROPERTY] to [VALUE]",
                 arguments: {
                   ID: {type: "string", defaultValue: "effect"},
-                  PROPERTY: {type: "string", menu: "vignette"},
+                  PROPERTY: {type: "string", menu: "ascii"},
+                  VALUE: {type: "string", defaultValue: "1"},
+                }
+              },
+              "---",
+              {
+                opcode: "depthOfField",
+                blockType: "command",
+                text: "add Depth of Field [ID] (NOT WORKING HELP)",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                }
+              },
+              {
+                opcode: "setDepthOfField",
+                blockType: "command",
+                text: "set Depth of Field [ID] [PROPERTY] to [VALUE]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                  PROPERTY: {type: "string", menu: "depthOfField"},
+                  VALUE: {type: "number", defaultValue: 2},
+                }
+              },
+              "---",
+              {
+                opcode: "colorAverage",
+                blockType: "command",
+                text: "add Grey Scale [ID]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                }
+              },
+              "---",
+              {
+                opcode: "colorDepth",
+                blockType: "command",
+                text: "add Color Depth [ID] [B]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                  B: {type: "number", defaultValue: 16},
+                }
+              },
+              "---",
+              {
+                opcode: "brightnessContrast",
+                blockType: "command",
+                text: "add Brightness Contrast [ID]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                }
+              },
+              {
+                opcode: "setBrightnessContrast",
+                blockType: "command",
+                text: "set Brightness Contrast [ID] [PROPERTY] to [VALUE]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                  PROPERTY: {type: "string", menu: "bContrast"},
+                  VALUE: {type: "number", defaultValue: 1},
+                }
+              },
+              "---",
+              {
+                opcode: "chromaticAberration",
+                blockType: "command",
+                text: "add Chromatic Aberration [ID]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                }
+              },
+              {
+                opcode: "setChromaticAberration",
+                blockType: "command",
+                text: "set Chromatic Aberration [ID] [PROPERTY] to [VALUE]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                  PROPERTY: {type: "string", menu: "cAberration"},
+                  VALUE: {type: "string", defaultValue: "[0.05,0.02]"},
+                }
+              },
+              "---",
+              {
+                opcode: "depth",
+                blockType: "command",
+                text: "add Depth [ID]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                }
+              },
+              "---",
+              {
+                opcode: "ssao",
+                blockType: "command",
+                text: "add SSAO [ID]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                }
+              },
+              {
+                opcode: "setSsao",
+                blockType: "command",
+                text: "set SSAO [ID] [PROPERTY] to [VALUE]",
+                arguments: {
+                  ID: {type: "string", defaultValue: "effect"},
+                  PROPERTY: {type: "string", menu: "ssao"},
                   VALUE: {type: "number", defaultValue: 1},
                 }
               },
               "---",
             ],
             menus: {
+              boolean: { acceptReporters: true, items: ["true", "false"]},
               blending: {items: [
                 { text: Scratch.translate("Add"), value: "0" },
                 { text: Scratch.translate("Alpha"), value: "1" },
@@ -571,6 +665,55 @@
                 { text: Scratch.translate("Technique (1-0)"), value: "technique" },
                 { text: Scratch.translate("Darkness"), value: "darkness" }
               ]},
+              SMAAPreset: {items: [
+                { text: Scratch.translate("Low"), value: "0" },
+                { text: Scratch.translate("Medium"), value: "1" },
+                { text: Scratch.translate("High"), value: "2" },
+                { text: Scratch.translate("Ultra"), value: "3" }
+              ]},
+              EdgeDetectionMode: {items: [
+                { text: Scratch.translate("Depth"), value: "0" },
+                { text: Scratch.translate("Luma"), value: "1" },
+                { text: Scratch.translate("Color"), value: "2" }
+              ]},
+              PredicationMode: {items: [
+                { text: Scratch.translate("Disabled"), value: "0" },
+                { text: Scratch.translate("Depth"), value: "1" },
+              ]},
+              ascii: {items: [
+                { text: Scratch.translate("Cell Size"), value: "cellSize" },
+                { text: Scratch.translate("Color (Number)"), value: "color" },
+                { text: Scratch.translate("Inverted (boolean)"), value: "inverted" }
+              ]},
+              depthOfField: {items: [
+                { text: Scratch.translate("Focus"), value: "foucs" },
+                { text: Scratch.translate("Range"), value: "dof" },
+                { text: Scratch.translate("Aperture"), value: "aperture" },
+                { text: Scratch.translate("Max Blur"), value: "maxBlur" },
+              ]},
+              bContrast: {items: [
+                { text: Scratch.translate("Contrast (-1 to 1)"), value: "contrast" },
+                { text: Scratch.translate("Brightness"), value: "brightness" },
+              ]},
+              cAberration: {items: [
+                { text: Scratch.translate("Offset (V2)"), value: "offset" },
+                { text: Scratch.translate("Radial Modulation (boolean)"), value: "radialModulation" },
+                { text: Scratch.translate("Modulation Offset"), value: "modulationOffset" },
+              ]},
+              ssao: {items: [
+                { text: Scratch.translate("Samples"), value: "samples" },
+                { text: Scratch.translate("Rings"), value: "rings" },
+                { text: Scratch.translate("Distance Threshold"), value: "distanceThreshold" },
+                { text: Scratch.translate("Distance Falloff"), value: "distanceFalloff" },
+                { text: Scratch.translate("Range Threshold"), value: "rangeThreshold" },
+                { text: Scratch.translate("Range Falloff"), value: "rangeFalloff" },
+                { text: Scratch.translate("Luminance Influence"), value: "luminanceInfluence" },
+                { text: Scratch.translate("Min Radius Scale"), value: "minRadiusScale" },
+                { text: Scratch.translate("Radius"), value: "radius" },
+                { text: Scratch.translate("Intensity"), value: "intensity" },
+                { text: Scratch.translate("Bias"), value: "bias" },
+                { text: Scratch.translate("Fade"), value: "fade" }
+              ]}
             },
           };
         }
@@ -818,6 +961,104 @@
         setVignette(args) {
           const e = this.getEffect(args); if (!e) return;
           e[args.PROPERTY] = JSON.parse(args.VALUE);
+        }
+
+        fxaa(args) { this.addPass(new FXAAEffect(), args); }
+
+        smaa(args) { 
+          this.addPass( new SMAAEffect({
+            preset: JSON.parse(args.SMAAPreset),
+            edgeDetectionMode: JSON.parse(args.EdgeDetectionMode),
+            predicationMode: JSON.parse(args.PredicationMode)
+          }), args);
+        }
+
+        ascii(args) {
+          this.addPass(new ASCIIEffect({
+            asciiTexture: new ASCIITexture(),
+          }), args);
+        }
+        setAscii(args) {
+          const e = this.getEffect(args); if (!e) return;
+          if (args.PROPERTY == "color" && JSON.parse(args.VALUE)) {
+            args.VALUE = new THREE.Color(args.VALUE).getHex();
+          }
+          e[args.PROPERTY] = JSON.parse(args.VALUE);
+        }
+
+        depthOfField(args) {
+          this.addPass(new DepthOfFieldEffect(camera, {
+            focusDistance: 0.4, //does not affect. why?
+            focusRange: 2.2,
+            bokehScale: 2.3,
+            height: 480
+          }), args);
+        }
+        setDepthOfField(args) {
+          let e = this.getEffect(args); if (!e) return;
+          console.log(e, args)
+          //e.uniforms.set(args.PROPERTY, args.VALUE);
+        }
+
+        colorAverage(args) { this.addPass(new ColorAverageEffect(), args); }
+        
+        colorDepth(args) { this.addPass(new ColorDepthEffect({bits: args.B}), args); }
+        
+        brightnessContrast(args) { this.addPass(new BrightnessContrastEffect({contrast: 0.5}), args); }
+        setBrightnessContrast(args) {
+          const e = this.getEffect(args); if (!e) return;
+          e[args.PROPERTY] = args.VALUE;
+        }
+        
+        chromaticAberration(args) { this.addPass(new ChromaticAberrationEffect({offset: new THREE.Vector2(0.01, 0.02)}), args); }
+        setChromaticAberration(args) {
+          const e = this.getEffect(args); if (!e) return;
+          args.VALUE = JSON.parse(args.VALUE);
+          if (args.PROPERTY == "offset") args.VALUE = new THREE.Vector2(...args.VALUE);
+          e[args.PROPERTY] = args.VALUE;
+        }
+
+        depth(args) { this.addPass(new DepthEffect(), args); }
+
+        ssao(args) {
+          const normalPass = new NormalPass(scene, camera);
+          const depthDownsamplingPass = new DepthDownsamplingPass({
+            normalBuffer: normalPass.texture,
+            resolutionScale: 0.5
+          });
+
+          const normalDepthBuffer = three.renderer.capabilities.isWebGL2 ?
+            depthDownsamplingPass.texture : null;
+
+          // Note: Thresholds and falloff correspond to camera near/far.
+          // Example: worldDistance = distanceThreshold * (camera.far - camera.near)
+          const ssaoEffect = new SSAOEffect(camera, normalPass.texture, {
+            /*blendFunction: 21,
+            distanceScaling: true,
+            depthAwareUpsampling: true,
+            normalDepthBuffer,
+            samples: 9,
+            rings: 7,
+            distanceThreshold: 0.02,
+            distanceFalloff: 0.0025,
+            rangeThreshold: 0.0003,
+            rangeFalloff: 0.0001,
+            luminanceInfluence: 0.7,
+            minRadiusScale: 0.33,
+            radius: 0.1,
+            intensity: 1.33,
+            bias: 0.025,
+            fade: 0.01,
+            color: null,
+            resolutionScale: 0.5*/
+          });
+
+          this.addPass(ssaoEffect, args);
+        }
+        setSsao(args) {
+          const e = this.getEffect(args); if (!e) return;
+          console.log(e, args)
+          e[args.PROPERTY] = args.VALUE;
         }
 
       }
