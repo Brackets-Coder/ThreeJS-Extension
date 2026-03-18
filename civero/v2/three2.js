@@ -248,6 +248,7 @@
 
       three.skin.updateTexture();
       renderer.dirty = true;
+      renderer.draw();
     }
 
     const canvas = `${renderer.canvas.width}x${renderer.canvas.height}`;
@@ -2127,8 +2128,9 @@
           this.setMaterial(args);
         }
         setMapMaterial(args) {
-          args.DATA = assets.textures.get(args.DATA);
-          if (!args.DATA) {console.warn(`No texture named ${args.DATA}`); return;}
+          const tex = assets.textures.get(args.DATA);
+          if (!tex) {console.warn(`No texture named ${args.DATA}`); return;}
+          args.DATA = tex;
           this.setMaterial(args);
         }
         setMaterialSide(args) {
@@ -2163,8 +2165,8 @@
           return JSON.stringify(m1);
         }
 
-        async loadTexture(args) {
-          const img = vm.editingTarget.getCostumes()[(vm.editingTarget.getCostumeIndexByName(args.COSTUME))].asset.encodeDataURI();
+        async loadTexture(args, util) {
+          const img = util.target.getCostumes()[(util.target.getCostumeIndexByName(args.COSTUME))].asset.encodeDataURI();
           const texture = await three.TextureLoader.loadAsync(img);
           texture.colorSpace = "srgb";
           assets.textures.set(args.NAME, texture);
@@ -2582,8 +2584,8 @@ SOFTWARE.
           delete runtime.extensionStorage[extensionID].fonts[args.FILE];
         }
 
-        async loadAudio(args) {
-          const sounds = vm.editingTarget.getSounds();
+        async loadAudio(args, util) {
+          const sounds = util.target.getSounds();
           const file = sounds[sounds.findIndex(a=>a.name==args.FILE)].asset.data.buffer;
 
           const audioContext = THREE.AudioContext.getContext();
