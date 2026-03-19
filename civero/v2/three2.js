@@ -2068,7 +2068,7 @@
           if (!geometry) {console.warn(`No geometry named ${args.NAME}`); return;}
 
           let data, dataLength;
-          data = cast.toArray(args.DATA);
+          data = JSON.parse(args.DATA); //issues with cast.toArray()
 
           switch (args.PROPERTY) {
             case "uv":
