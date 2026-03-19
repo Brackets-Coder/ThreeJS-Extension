@@ -34,11 +34,12 @@
   const { Water } = await import('https://esm.sh/three@0.182.0/addons/objects/Water.js');
   const { Reflector } = await import('https://esm.sh/three@0.182.0/addons/objects/Reflector.js');
 
+  //do smth about this
   const { Octree } = await import('https://esm.sh/three@0.182.0/addons/math/Octree.js');
   const { OctreeHelper } = await import('https://esm.sh/three@0.182.0/addons/helpers/OctreeHelper.js');
-  const octree = new Octree();
+  /*const octree = new Octree();
   const helper = new OctreeHelper( octree );
-  scene.add( helper );
+  scene.add( helper );*/
 
   async function init() {}
 
