@@ -97,7 +97,7 @@
                   C: {type: "color", defaultValue: "#7F7F7F"},
                   DS: {type: "number", defaultValue: "20"},
                 }
-              },
+              },/*
               "---",
               {
                 opcode: "octree",
@@ -108,7 +108,7 @@
                   OBJECT: {type: "string", defaultValue: "object"},
                   MODE: {type: "string", defaultValue: "capsule"},
                 }
-              },
+              },*/
 
             ],
             menus: {},
@@ -155,7 +155,7 @@
           assets.objects.set(args.NAME, obj);
           scene.add(obj);
         }
-
+/*
         octree(args) {
           const obj = assets.objects.get(args.OBJECT);
           if (!obj) {console.warn(`No object ${args.OBJECT}`); return;}
@@ -164,7 +164,7 @@
           console.log(result);
           return result;
         }
-
+*/
       }
 
       Scratch.extensions.register(new ThreeJSAddon());
