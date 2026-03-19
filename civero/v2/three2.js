@@ -1061,21 +1061,6 @@
               },
 
               "---",
-
-              {blockType: "label",
-              text: Scratch.translate("Sensing")},
-                //is there a way to subdivide the bounding box into multiple ones for more precicion?
-              {
-                opcode: "touching",
-                blockType: Scratch.BlockType.BOOLEAN,
-                text: "is [A] touching [B]?",
-                arguments: {
-                  A: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
-                  B: { type: Scratch.ArgumentType.STRING, defaultValue: "ground"}
-                }
-              },
-
-              "---",
               
               {blockType: "label",
               text: Scratch.translate("Audio")},
@@ -1092,7 +1077,7 @@
               {
                 opcode: "addAudio",
                 blockType: Scratch.BlockType.COMMAND,
-                text: "add audio [NAME] to [PARENT]", 
+                text: "add audio [NAME] to object [PARENT]", 
                 color1: "#5FAD56",
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Whiz"},
@@ -1156,6 +1141,22 @@
                 blockType: "command",
                 text: "stop all 3D audios",
                 color1: "#C84630",               
+              },
+
+              "---",
+
+              {blockType: "label",
+              text: Scratch.translate("Sensing")},
+                //is there a way to subdivide the bounding box into multiple ones for more precicion?
+                //https://threejs.org/docs/#Octree
+              {
+                opcode: "touching",
+                blockType: Scratch.BlockType.BOOLEAN,
+                text: "is [A] touching [B]?",
+                arguments: {
+                  A: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
+                  B: { type: Scratch.ArgumentType.STRING, defaultValue: "ground"}
+                }
               },
 
               "---",

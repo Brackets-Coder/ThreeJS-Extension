@@ -682,7 +682,7 @@
               ]},
               ascii: {items: [
                 { text: Scratch.translate("Cell Size"), value: "cellSize" },
-                { text: Scratch.translate("Color (Number)"), value: "color" },
+                { text: Scratch.translate("Color Hex"), value: "color" },
                 { text: Scratch.translate("Inverted (boolean)"), value: "inverted" }
               ]},
               depthOfField: {items: [
@@ -980,8 +980,11 @@
         }
         setAscii(args) {
           const e = this.getEffect(args); if (!e) return;
-          if (args.PROPERTY == "color" && JSON.parse(args.VALUE)) {
-            args.VALUE = new THREE.Color(args.VALUE).getHex();
+          if (args.PROPERTY == "color") {
+            //const c = new THREE.Color(args.VALUE);
+            //args.VALUE = c.r * 255 * 65536 + c.g * 255 * 256 + c.b * 255;
+            e.color = args.VALUE;
+            return;
           }
           e[args.PROPERTY] = JSON.parse(args.VALUE);
         }
@@ -996,7 +999,6 @@
         }
         setDepthOfField(args) {
           let e = this.getEffect(args); if (!e) return;
-          console.log(e, args)
           //e.uniforms.set(args.PROPERTY, args.VALUE);
         }
 
@@ -1057,7 +1059,6 @@
         }
         setSsao(args) {
           const e = this.getEffect(args); if (!e) return;
-          console.log(e, args)
           e[args.PROPERTY] = args.VALUE;
         }
 
