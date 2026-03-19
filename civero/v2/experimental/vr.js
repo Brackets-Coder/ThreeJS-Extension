@@ -30,29 +30,26 @@
   let camera = _ThreeJS_.camera;
   let assets = _ThreeJS_.assets;
 
+  let vrButton;
   const { VRButton } = await import("https://esm.sh/three@0.182.0/addons/webxr/VRButton.js");
-  
 
   async function init() {
-    /*document.body*/ renderer.addOverlay( VRButton.createButton( three.renderer ) );
-    three.renderer.xr.enabled = true;
+    vrButton = VRButton.createButton( three.renderer )
+    /*document.body*/ renderer.addOverlay( vrButton );
 
     _ThreeJS_.stolenRender = true;
     three.renderer.setAnimationLoop( function () {
 
-      //manual rendering/clearing wont work!
+      //manual rendering/clearing wont work! stopping the project wont affect.
       three.renderer.render( scene, camera );
 
     } );
 
     addEventListener("ThreeJS-Reset", ()=>{
       camera = _ThreeJS_.camera;
-      onCameraChange.forEach(p=>p.camera = camera);
-      console.log(composer);
     });
     addEventListener("ThreeJS-cameraChange", ()=>{
       camera = _ThreeJS_.camera;
-      onCameraChange.forEach(p=>p.camera = camera);
     });
   }
 
@@ -64,18 +61,43 @@
           return {
             id: extensionID,
             name: "VR",
-            color1: "#4D5061",
+            color1: "#38685c",
             color2: "#30323D",
             color3: "#606060",
             menuIconURI: extensionIcon,
             blockIconURI: extensionIcon,
             docsURI: "https://github.com/Brackets-Coder/ThreeJS-Extension",
-            blocks: [],
-            menus: {},
+            blocks: [
+              {
+                opcode: "vrComp",
+                blockType: "boolean",
+                text: "VR compatible?",
+                arguments: {
+                  STATE: {type: "string", menu: "boolean"},
+                }
+              },
+              {
+                opcode: "vrToggle",
+                blockType: "command",
+                text: "set VR [STATE]",
+                arguments: {
+                  STATE: {type: "string", menu: "boolean"},
+                }
+              },
+            ],
+            menus: {
+              boolean: { acceptReporters: true, items: ["true", "false"]},
+            },
           };
         }
+
+        vrComp(args) {
+          return vrButton.xrSessionIsGranted;
+        }
         
-        
+        vrToggle(args) {
+          three.renderer.xr.enabled = JSON.parse(args.STATE);
+        }
 
       }
 
