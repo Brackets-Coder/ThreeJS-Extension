@@ -4,7 +4,13 @@
 // By: Civero <https://scratch.mit.edu/users/Civero/>
 // License: MPL-2.0 and MIT
 
-// Started 13 March 2026
+// Started 19 March 2026
+
+/* TODO: 
+    When button (x) of controller (right) event
+    Blocks will fail if xr not supported, add fail prevention
+    is it possible to use this in phones? ar, displaying models irl??
+*/
 
 (async function (Scratch) {
   "use strict";
@@ -26,31 +32,62 @@
   
   const THREE = _ThreeJS_.THREE;
   const three = _ThreeJS_.three;
+  const xr = three.renderer.xr;
   const scene = _ThreeJS_.scene;
   let camera = _ThreeJS_.camera;
   let assets = _ThreeJS_.assets;
 
-  let vrButton;
-  const { VRButton } = await import("https://esm.sh/three@0.182.0/addons/webxr/VRButton.js");
+  let currentSession, xrInputSources;
+
+  let controllers;
+  const { XRControllerModelFactory } = await import("https://esm.sh/three@0.182.0/addons/webxr/XRControllerModelFactory.js");
+  const controllerModelFactory = new XRControllerModelFactory();
+
+  const { OculusHandModel } = await import("https://esm.sh/three@0.182.0/addons/webxr/OculusHandModel.js");
+  const { OculusHandPointerModel } = await import("https://esm.sh/three@0.182.0/addons/webxr/OculusHandPointerModel.js");
 
   async function init() {
-    vrButton = VRButton.createButton( three.renderer )
-    /*document.body*/ renderer.addOverlay( vrButton );
-
+    //Render
+    xr.enabled = true;
     _ThreeJS_.stolenRender = true;
     three.renderer.setAnimationLoop( function () {
 
-      //manual rendering/clearing wont work! stopping the project wont affect.
+      //manual rendering/clearing wont work! stopping the project wont affect. No postprocessing either.
       three.renderer.render( scene, camera );
 
     } );
 
+    //Events
     addEventListener("ThreeJS-Reset", ()=>{
       camera = _ThreeJS_.camera;
+
+      addControls();
     });
     addEventListener("ThreeJS-cameraChange", ()=>{
       camera = _ThreeJS_.camera;
     });
+    
+    addControls();
+    function addControls() {
+      // controllers
+      controllers = [xr.getController( 0 ), xr.getController( 1 )];
+      scene.add( controllers[0] );
+      scene.add( controllers[1] );
+      
+      function addGrip(h) {
+        const controllerGrip = xr.getControllerGrip( h );
+        controllerGrip.add( controllerModelFactory.createControllerModel( controllerGrip ) );
+        scene.add( controllerGrip );
+      }
+      addGrip(0); addGrip(1);
+    }
+
+    //
+    Object.defineProperties(_ThreeJS_, {
+      xr: { get: () => xr, enumerable: true,},
+      xrSession: { get: () => currentSession, enumerable: true, },
+    });
+
   }
 
   Promise.resolve(init())
@@ -70,33 +107,178 @@
             blocks: [
               {
                 opcode: "vrComp",
-                blockType: "boolean",
-                text: "VR compatible?",
+                blockType: "Boolean",
+                text: "[MODE] compatible?",
                 arguments: {
+                  MODE: {type: "string", menu: "mode"},
+                }
+              },
+              "---",
+              {
+                opcode: "vrToggle",
+                blockType: "command",
+                text: "request [MODE] session [STATE]",
+                arguments: {
+                  MODE: {type: "string", menu: "mode"},
                   STATE: {type: "string", menu: "boolean"},
                 }
               },
               {
-                opcode: "vrToggle",
+                opcode: "vrState",
+                blockType: "Boolean",
+                text: "active session",
+              },
+              "---",
+              {
+                opcode: "hands",
                 blockType: "command",
-                text: "set VR [STATE]",
+                text: "add [HAND] Hand Model to scene",
                 arguments: {
-                  STATE: {type: "string", menu: "boolean"},
+                  HAND: {type: "string", menu: "hands"},
+                }
+              },
+              {
+                opcode: "handsEvent",
+                blockType: "event",
+                text: "when [HAND] Hand is pinched",
+                isEdgeActivated: false,
+                //shouldRestartExistingThreads: true,
+                arguments: {
+                  HAND: {type: "string", menu: "hands"},
+                }
+              },
+              "---",
+              /*
+              {
+                opcode: "controllerEvent",
+                blockType: "event",
+                text: "when [HAND] Controller action [BUTTON]",
+                isEdgeActivated: false,
+                //shouldRestartExistingThreads: true,
+                arguments: {
+                  HAND: {type: "string", menu: "hands"},
+                  BUTTON: {type: "string", menu: "buttons"},
+                }
+              },*/
+              
+              {
+                opcode: "controller",
+                blockType: "reporter",
+                text: "get [HAND] Controller button [BUTTON] [ACTION]",
+                isEdgeActivated: false,
+                //shouldRestartExistingThreads: true,
+                arguments: {
+                  HAND: {type: "string", menu: "hands"},
+                  BUTTON: {type: "string", menu: "buttons" },
+                  ACTION: {type: "string", menu: "buttonActions" },
                 }
               },
             ],
             menus: {
-              boolean: { acceptReporters: true, items: ["true", "false"]},
+              mode: {items: [
+                { text: Scratch.translate("AR"), value: "immersive-ar" },
+                { text: Scratch.translate("VR"), value: "immersive-vr" },
+              ]},
+              boolean: { acceptReporters: true, items: [
+                { text: Scratch.translate("on"), value: "true" },
+                { text: Scratch.translate("off"), value: "false" },
+              ]},
+              hands: { items: [
+                { text: Scratch.translate("Right"), value: "0" },
+                { text: Scratch.translate("Left"), value: "1" },
+              ]},
+              buttons: { items: [
+                { text: Scratch.translate("Trigger"), value: "0" },
+                { text: Scratch.translate("Grip"), value: "1" },
+                { text: Scratch.translate("Touchpad"), value: "2" },
+                { text: Scratch.translate("Thumbstick"), value: "3" },
+                { text: Scratch.translate("A / X"), value: "4" },
+                { text: Scratch.translate("B / Y"), value: "5" },
+                { text: Scratch.translate("Surface / Thumb Rest"), value: "6" },
+              ]},
+              buttonActions: { items: [
+                { text: Scratch.translate("Pressed"), value: "pressed" },
+                { text: Scratch.translate("Touched"), value: "touched" },
+                { text: Scratch.translate("Value"), value: "value" },
+              ]},
             },
           };
         }
 
         vrComp(args) {
-          return vrButton.xrSessionIsGranted;
+          return navigator.xr.isSessionSupported(args.MODE);
         }
         
-        vrToggle(args) {
-          three.renderer.xr.enabled = JSON.parse(args.STATE);
+        async vrToggle(args) {
+
+          xr.enabled = JSON.parse(args.STATE);
+
+          if (xr.enabled) {
+
+            navigator.xr.requestSession( args.MODE, {
+              requiredFeatures: [  ],
+              optionalFeatures: [
+                'hand-tracking',
+                'local-floor',
+                'bounded-floor',
+                'layers',
+              ],
+            } )
+						.then( onSessionStarted );
+
+          } else {
+
+            currentSession.end();
+
+          }
+
+          async function onSessionStarted( session ) {
+            session.addEventListener('inputsourceschange', onInputSourcesChange);
+            function onInputSourcesChange(event) {
+              xrInputSources = event.session.inputSources;
+            }
+
+            session.addEventListener( 'end', onSessionEnded );
+            await xr.setSession( session );
+            currentSession = session;
+            xrInputSources = session.inputSources;
+
+            console.log("Started Three JS XR Session!", session, xrInputSources);
+          }
+
+          function onSessionEnded() {
+            currentSession.removeEventListener( 'end', onSessionEnded );
+            currentSession = null;
+            console.log("Ended Three JS XR Session!");
+          }
+        }
+
+        vrState(args) {
+          return xr.isPresenting;
+        }
+
+        hands(args) {
+          const hand = xr.getHand( args.HAND );
+          hand.add( new OculusHandModel( hand ) );
+          const handPointer = new OculusHandPointerModel( hand, controllers[args.HAND] );
+          hand.add( handPointer );
+
+          scene.add( hand );
+
+          hand.addEventListener( 'pinchend', function () {
+
+            runtime.startHats(`${extensionID}_handsEvent`, {HAND: args.HAND} );
+
+          } );
+        }
+
+        controller(args) {
+          const sources = xr.getSession().inputSources;
+          const hand = args.HAND == 1 ? "left" : "right";
+          console.log(sources, hand);
+          const input = sources.find(s => s.handedness === hand);
+          // Uncaught TypeError: Cannot read properties of undefined (reading 'gamepad')
+          return input?.gamepad?.buttons[args.BUTTON][args.ACTION];
         }
 
       }
