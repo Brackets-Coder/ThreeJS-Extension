@@ -35,10 +35,11 @@
   const {OBJLoader} = await import("https://esm.sh/three@0.182.0/addons/loaders/OBJLoader.js");
   const {FBXLoader} = await import("https://esm.sh/three@0.182.0/addons/loaders/FBXLoader.js");
   const {FontLoader} = await import ("https://esm.sh/three@0.182.0/addons/loaders/FontLoader.js");
+  const {Octree} = await import("https://esm.sh/three@0.182.0/addons/math/Octree.js");
   let opentype;
 
-  let three, loopId, clock, defaultGeo, defaultMat, storedFog, storedRaycast;
-  let scene, camera;
+  let three, loopId, clock, defaultGeo, defaultMat, storedFog, storedRaycast, dummyVector3, dummyEuler, dummyQuaternion, dummyMatrix4, dummyObject,
+  scene, camera;
 
   let assets = {
     objects: new Map(),
@@ -188,6 +189,12 @@
     assets.objects.set("camera", camera);
     clock = new THREE.Clock();
 
+    dummyVector3 = new THREE.Vector3();
+    dummyEuler = new THREE.Euler();
+    dummyQuaternion = new THREE.Quaternion();
+    dummyMatrix4 = new THREE.Matrix4();
+    dummyObject = new THREE.Object3D();
+
     defaultGeo = new THREE.BoxGeometry();
     defaultMat = new THREE.MeshMatcapMaterial();
     defaultMat.map = await three.TextureLoader.loadAsync(`data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHdpZHRoPSIyODMiIGhlaWdodD0iMjgzIiB2aWV3Qm94PSIwLDAsMjgzLDI4MyI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTk5LjQ0ODk1LC0zOS4xMTMzNSkiPjxnIHN0cm9rZT0ibm9uZSIgc3Ryb2tlLW1pdGVybGltaXQ9IjEwIj48cGF0aCBkPSJNMzgyLjQ0ODk1LDM5LjExMzM1djI4M2gtMjgzdi0yODN6IiBmaWxsPSIjNjY2NjY2IiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJNMTkzLjc4MjI4LDM5LjExMzM1djk0LjMzMzMzaC05NC4zMzMzM3YtOTQuMzMzMzN6IiBmaWxsPSIjOTk5OTk5IiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJNMzgyLjQ0ODk1LDM5LjExMzM1djk0LjMzMzMzaC05NC4zMzMzM3YtOTQuMzMzMzN6IiBmaWxsPSIjOTk5OTk5IiBzdHJva2Utd2lkdGg9IjAiLz48cGF0aCBkPSJNMTkzLjc4MjI5LDIyNy43ODAwMnY5NC4zMzMzM2gtOTQuMzMzMzN2LTk0LjMzMzMzeiIgZmlsbD0iIzk5OTk5OSIgc3Ryb2tlLXdpZHRoPSIwIi8+PHBhdGggZD0iTTI4Ny4xNjY2NiwxMzIuODMzMzR2OTQuMzMzMzNoLTk0LjMzMzMzdi05NC4zMzMzM3oiIGZpbGw9IiM5OTk5OTkiIHN0cm9rZS13aWR0aD0iMCIvPjxwYXRoIGQ9Ik0zODIuNDQ4OTUsMjI3Ljc4MDAydjk0LjMzMzMzaC05NC4zMzMzNHYtOTQuMzMzMzN6IiBmaWxsPSIjOTk5OTk5IiBzdHJva2Utd2lkdGg9IjAiLz48dGV4dCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxMDUuNSwzMDIuMjg2OTMpIHNjYWxlKDAuNzc2NDgsMC43NzY0OCkiIGZvbnQtc2l6ZT0iNDAiIHhtbDpzcGFjZT0icHJlc2VydmUiIGZpbGw9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iMSIgZm9udC1mYW1pbHk9IlNlcmlmIiBmb250LXdlaWdodD0ibm9ybWFsIiB0ZXh0LWFuY2hvcj0ic3RhcnQiPjx0c3BhbiB4PSIwIiBkeT0iMCI+bm8gbWF0ZXJpYWw8L3RzcGFuPjwvdGV4dD48dGV4dCB0cmFuc2Zvcm09InRyYW5zbGF0ZSgzNzQuNSw1Ny43MTMxNSkgcm90YXRlKC0xODApIHNjYWxlKDAuNzc2NDksMC43NzY0OSkiIGZvbnQtc2l6ZT0iNDAiIHhtbDpzcGFjZT0icHJlc2VydmUiIGZpbGw9IiMwMDAwMDAiIHN0cm9rZS13aWR0aD0iMSIgZm9udC1mYW1pbHk9IlNlcmlmIiBmb250LXdlaWdodD0ibm9ybWFsIiB0ZXh0LWFuY2hvcj0ic3RhcnQiPjx0c3BhbiB4PSIwIiBkeT0iMCI+bm8gbWF0ZXJpYWw8L3RzcGFuPjwvdGV4dD48L2c+PC9nPjwvc3ZnPg==`);
@@ -242,7 +249,7 @@
   const render = (onlyUpdate) => {
     if (camera && scene) {
       if (!onlyUpdate) {
-        if (!_ThreeJS_.stolenRender) three.renderer.render(scene, camera);
+        if (!_ThreeJS_.stolenRender) three.renderer.render(scene, camera);  
         _ThreeJS_.onRender.forEach(async f => await f());
       }
 
@@ -286,6 +293,27 @@
     });
 
     return {name: file[0].name, url: url};
+  }
+
+const typedArray = new Float64Array(100);
+
+function convert(s, l=100) {
+  if (typeof s !== "string") return s;
+  if (s === "true") return true;
+  if (s === "false") return false;
+
+  if (s.startsWith("[") && s.endsWith("]")) {
+    typedArray.set(s.slice(1, -1).split(",").map(Number)); 
+    return typedArray.slice(0,l);
+  }
+  const n = Number(s);
+  return isNaN(n) ? s : n;
+}
+  function toString(a) {
+    if (ArrayBuffer.isView(a) || Array.isArray(a)) {
+      return `[${a.join(",")}]`;
+    }
+    return String(a);
   }
 
   Promise.resolve(init())
@@ -513,6 +541,29 @@
                   INDEX: { type: "number", defaultValue: 1 },
                   PROPERTY: { type: "string", menu: "instanceItems"},
                   MATRIX: { type: "string", defaultValue: "[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]" },
+                },
+              },
+              {
+                opcode: "setInstance2",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "set instanced mesh [NAME] matrix to [LIST]",
+                color1: "#5FAD56",
+                arguments: {
+                  NAME: { type: "string", defaultValue: "forest" },
+                  INDEX: { type: "number", defaultValue: 1 },
+                  PROPERTY: { type: "string", menu: "instanceItems"},
+                  LIST: { type: "string", menu: "lists" },
+                },
+              },
+              {
+                opcode: "getInstance",
+                blockType: Scratch.BlockType.REPORTER,
+                text: "get instanced mesh [NAME] item [INDEX] [PROPERTY]",
+                color1: "#5FAD56",
+                arguments: {
+                  NAME: { type: "string", defaultValue: "forest" },
+                  INDEX: { type: "number", defaultValue: 1 },
+                  PROPERTY: { type: "string", menu: "instanceItems"},
                 },
               },
 
@@ -966,7 +1017,7 @@
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "camera" },
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "cameraProperties"},
-                  VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "90"},
+                  VALUE: { type: "number", defaultValue: 90},
                 }
               },
               {
@@ -1056,7 +1107,7 @@
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "light" },
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "lightShadow"},
-                  VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: "10"},
+                  VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 10},
                 }
               },
 
@@ -1102,7 +1153,7 @@
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Whiz"},
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "audioNumeral"},
-                  DATA: { type: Scratch.ArgumentType.NUMBER, defaultValue: "1" }
+                  DATA: { type: Scratch.ArgumentType.NUMBER, defaultValue: 1 }
                 }
               },
               {
@@ -1415,6 +1466,7 @@
                 { text: Scratch.translate("Physical: Anisotropy Rotation"), value: "anisotropyRotation" },
                 { text: Scratch.translate("Physical: Attenuation Distance"), value: "attenuationDistance" },
                 { text: Scratch.translate("Bump Scale"), value: "bumpScale" },
+                { text: Scratch.translate("Displacement Scale"), value: "displacementScale" },
                 { text: Scratch.translate("Ambient Occlusion Texture Intensity"), value: "aoMapIntensity" },
               ]},
               materialBooleanProperties: { items: [
@@ -1643,9 +1695,21 @@
                 if (Object.keys(m).length == 0) return [["Load a font!"]];
                 return Object.keys(m).map(x=>[x]);
               }},
+              lists:  {items: "listsMenu" },
             },
 
           };
+        }
+
+        listsMenu() {
+          const vars = Object.entries(vm.runtime.getTargetForStage()?.variables);
+          const et = Object.entries(Scratch.vm.editingTarget?.variables);
+
+          vars.push(...et);
+          const r = vars.filter(v=>v[1].type=="list").map(v=>v[1].name);
+
+          if (!r || r.length==0) return  ["Create a list!"];
+          return r;
         }
 
         openExtra() {open("https://threejs.org/docs");}
@@ -1683,6 +1747,8 @@
               assets.audios.clear();
               assets.renderTargets.clear();
               scene.clear();
+              scene.background = null;
+              scene.enviroment = null;
               scene.fog = null;
               scene.overrideMaterial = null;
               camera = new THREE.PerspectiveCamera(90, width/height);
@@ -1737,13 +1803,13 @@
 
           if (args.PROPERTY == "autoRender") 
           {
-            if (JSON.parse(args.VALUE)) loopId = requestAnimationFrame(loop);
+            if (convert(args.VALUE)) loopId = requestAnimationFrame(loop);
             else {
               cancelAnimationFrame(loopId); 
               loopId = null;
             }
           } 
-          else current[keys[keys.length - 1]] = JSON.parse(args.VALUE);
+          else current[keys[keys.length - 1]] = convert(args.VALUE);
         }
         rendererClear(args) {
           three.renderer[args.B]();
@@ -1753,7 +1819,7 @@
           render(true);
         }
         rendererShadow(args) {
-          three.renderer.shadowMap.type = JSON.parse(args.PROPERTY);
+          three.renderer.shadowMap.type = convert(args.PROPERTY);
         }
         getRenderer(args) {
           const keys = args.PROPERTY.split(".");
@@ -1796,7 +1862,7 @@
           let value = scene[args.PROPERTY];
           if (value) {
             if (value.isColor) return "#" + value.getHexString();
-            else return JSON.stringify(value);
+            else return toString(value);
           }
         }
         createFog(args) {
@@ -1820,17 +1886,17 @@
            assets[args.TYPE].delete(args.NAME);
         }
 
-        /*async*/ setTransform(args) {
+        setTransform(args) {
           const obj = assets.objects.get(args.OBJECT);
           if (!obj) {console.warn(`No object named ${args.OBJECT}`); return;}
 
-          let values = JSON.parse(args.VALUE);
+          let values = convert(args.VALUE);
           args.TRANSFORM == "rotation" ? values = values.map(a => THREE.MathUtils.degToRad(a)) : null;
-          let v3 = new THREE.Vector3().fromArray(values);
+          dummyVector3.fromArray(values);
 
           if (args.TRANSFORM == "rotation") {
-            /*await*/ obj.rotation.setFromVector3(v3);
-          } else /*await*/ obj[args.TRANSFORM].copy(v3);
+            obj.rotation.setFromVector3(dummyVector3);
+          } else obj[args.TRANSFORM].copy(dummyVector3);
         }
 
         getTransform(args) {
@@ -1840,20 +1906,20 @@
           let v3;
 
           if (args.TRANSFORM == "getWorldPosition" || args.TRANSFORM == "getWorldDirection") {
-            v3 = obj[args.TRANSFORM](new THREE.Vector3());
+            v3 = obj[args.TRANSFORM](dummyVector3);
             v3 = [v3.x, v3.y, v3.z];
           } else v3 = obj[args.TRANSFORM].toArray();
           args.TRANSFORM == "rotation" || args.TRANSFORM == "getWorldDirection" ? v3 = v3.slice(0,3).map(r=> THREE.MathUtils.radToDeg(r)) : null;
 
-          return JSON.stringify(v3);
+          return toString(v3);
         }
 
-        /*async*/ transformTransform(args) {
+        transformTransform(args) {
           const obj = assets.objects.get(args.OBJECT);
           if (!obj) {console.warn(`No object named ${args.OBJECT}`); return;}
           let v = args.VALUE;
           args.TRANSFORM == "rotation" ? v = THREE.MathUtils.degToRad(v) : null;
-          /*await*/ args.ACTION == "set" ? obj[args.TRANSFORM][args.XYZ] = v : obj[args.TRANSFORM][args.XYZ] += v;
+          args.ACTION == "set" ? obj[args.TRANSFORM][args.XYZ] = v : obj[args.TRANSFORM][args.XYZ] += v;
         }
 
         setRotation(args) {
@@ -1863,66 +1929,66 @@
         }
 
         getAxis(args) {
-          return JSON.parse(args.V3)[{"x":0, "y":1, "z": 2}[args.XYZ]];
+          return convert(args.V3)[{"x":0, "y":1, "z": 2}[args.XYZ]];
         }
 
         operateVector(args) {
-          const v = new THREE.Vector3().fromArray(JSON.parse(args.V));
+          const v = dummyVector3.fromArray(convert(args.V));
           let r = v[args.OPERATION]();
           typeof(r) == "object" ? r = r.toArray() : null;
-          return JSON.stringify(r);
+          return toString(r);
         }
 
         operate2Vector(args) {
-          const v1 = new THREE.Vector3().fromArray(JSON.parse(args.V1));
-          let v2 = JSON.parse(args.V2);
-          if (args.OPERATION == "applyEuler") v2 = new THREE.Euler().fromArray(v2);
-          else typeof(v2) == "number" ? null : v2 = new THREE.Vector3().fromArray(v2);
+          const v1 = dummyVector3.fromArray(convert(args.V1));
+          let v2 = convert(args.V2);
+          if (args.OPERATION == "applyEuler") v2 = dummyEuler.fromArray(v2);
+          else typeof(v2) == "number" ? null : v2 = dummyVector3.clone().fromArray(v2);
           let r = v1[args.OPERATION](v2);
           typeof(r) == "object" ? r = r.toArray() : null;
-          return JSON.stringify(r);
+          return toString(r);
         }
 
         moveVector(args) {
-          let v3 = new THREE.Vector3().fromArray(JSON.parse(args.V));
+          let v3 = dummyVector3.fromArray(convert(args.V));
 
-          const [x,y,z] = JSON.parse(args.D);
-          const euler = new THREE.Euler(
+          const [x,y,z] = convert(args.D);
+          const euler = dummyEuler.set(
             THREE.MathUtils.degToRad(x), 
             THREE.MathUtils.degToRad(y), 
             THREE.MathUtils.degToRad(z), 
             args.ORDER
           );
-          const direction = new THREE.Vector3(0, 0, -1).applyEuler(euler).normalize();
+          const direction = dummyVector3.set(0, 0, -1).applyEuler(euler).normalize();
 
           v3.add(direction.multiplyScalar(args.STEPS));
-          return JSON.stringify(v3.toArray());
+          return toString(v3.toArray());
         }
 
         getVectorProjected(args) {
-          const v3 = new THREE.Vector3().fromArray(JSON.parse(args.V));
+          const v3 = dummyVector3.clone().fromArray(convert(args.V));
           v3.project(camera);
           const v2 = new THREE.Vector2(...three.skin.size.map(m=>m/2));
           const r = [v3.x*v2.x, v3.y*v2.y];
-          return JSON.stringify(r);
+          return toString(r);
         }
 
         directionToVector(args) {
-          const v1 = new THREE.Vector3().fromArray(JSON.parse(args.V1));
-          const v2 = new THREE.Vector3().fromArray(JSON.parse(args.V2));
+          const v1 = dummyVector3.clone().fromArray(convert(args.V1));
+          const v2 = dummyVector3.clone().fromArray(convert(args.V2));
 
           const direction = v1.sub(v2).normalize();
           const pitch = THREE.MathUtils.radToDeg( Math.atan2(-direction.y, Math.sqrt(direction.x*direction.x + direction.z*direction.z)) );
           const yaw = THREE.MathUtils.radToDeg( Math.atan2(direction.x, direction.z) );
 
-          return JSON.stringify([pitch,yaw,0]);
+          return toString([pitch,yaw,0]);
         }
 
         interpolateVectors(args) {
-          const v1 = new THREE.Vector3().fromArray(JSON.parse(args.V1));
-          const v2 = new THREE.Vector3().fromArray(JSON.parse(args.V2));
+          const v1 = dummyVector3.clone().fromArray(convert(args.V1));
+          const v2 = dummyVector3.clone().fromArray(convert(args.V2));
           const r = v1.lerp(v2, args.A/100);
-          return JSON.stringify(r.toArray());
+          return toString(r.toArray());
         }
 
         addObject(args) {
@@ -2023,21 +2089,20 @@
               obj.material = data;
               obj.traverse(o=>o.material = data); //for models, not the best aproach but...
               break;
-            default: obj[args.PROPERTY] = JSON.parse(args.DATA);
           }
         }
         setObjectBool(args) {
           const obj = assets.objects.get(args.NAME);
           if (!obj) {console.warn(`No object named ${args.NAME}`); return;}
 
-          obj.traverse(o=>{o[args.PROPERTY] = JSON.parse(args.DATA);});
-          obj[args.PROPERTY] = JSON.parse(args.DATA);
+          obj.traverse(o=>{o[args.PROPERTY] = convert(args.DATA);});
+          obj[args.PROPERTY] = convert(args.DATA);
         }
         getObjectBool(args) {
           const obj = assets.objects.get(args.NAME);
           if (!obj) {console.warn(`No object named ${args.NAME}`); return;}
 
-          return JSON.stringify(obj[args.PROPERTY]);
+          return toString(obj[args.PROPERTY]);
         }
 
         createGeometry(args) {
@@ -2068,7 +2133,7 @@
           if (!geometry) {console.warn(`No geometry named ${args.NAME}`); return;}
 
           let data, dataLength;
-          data = JSON.parse(args.DATA); //issues with cast.toArray()
+          data = JSON.parse(args.DATA); //should avoid parse, but for geometries (updated very little in theory) it shouldnt be a problem right?
 
           switch (args.PROPERTY) {
             case "uv":
@@ -2093,9 +2158,9 @@
               result.push([a[i],a[i+1],a[i+2]]);
           }
 
-          return JSON.stringify(result).replaceAll("],", "] ").slice(1,-1);
+          return toString(result).replaceAll("],", "] ").slice(1,-1);
           */
-         return JSON.stringify(Object.values(a));
+         return toString(Object.values(a));
         }
 
         createMaterial(args) {
@@ -2124,22 +2189,22 @@
           this.setMaterial(args);
         }
         setBoolMaterial(args) {
-          args.DATA = JSON.parse(args.DATA);
+          args.DATA = convert(args.DATA);
           this.setMaterial(args);
         }
         setMapMaterial(args) {
           args.DATA = assets.textures.get(args.DATA);
-          if (!args.DATA) {console.warn(`No texture named ${args.DATA}`); return;}
+          if (!args.DATA && args.DATA != null) {console.warn(`No texture named ${args.DATA}`); return;}
           this.setMaterial(args);
         }
         setMaterialSide(args) {
           args.PROPERTY = "side";
-          args.DATA = JSON.parse(args.DATA);
+          args.DATA = convert(args.DATA);
           this.setMaterial(args);
         }
         setMaterialBlending(args) {
           args.PROPERTY = "blending";
-          args.DATA = JSON.parse(args.DATA);
+          args.DATA = convert(args.DATA);
           this.setMaterial(args);
         }
         setMaterialClipping(args) {
@@ -2161,11 +2226,13 @@
           try { m2 = JSON.parse(m2);}
           catch {m2 = [m2];}
           m1.push(...m2);
-          return JSON.stringify(m1);
+          return toString(m1);
         }
 
-        async loadTexture(args) {
-          const img = vm.editingTarget.getCostumes()[(vm.editingTarget.getCostumeIndexByName(args.COSTUME))].asset.encodeDataURI();
+        async loadTexture(args, util) {
+          let img;
+          if (args.COSTUME.startsWith("data:image")) img = args.COSTUME;
+          else img = util.target.getCostumes()[(util.target.getCostumeIndexByName(args.COSTUME))].asset.encodeDataURI();
           const texture = await three.TextureLoader.loadAsync(img);
           texture.colorSpace = "srgb";
           assets.textures.set(args.NAME, texture);
@@ -2192,8 +2259,14 @@
           const texture = assets.textures.get(args.NAME);
           if (!texture) {console.warn(`No texture named ${args.NAME}`); return;}
 
-          let r = JSON.parse(args.VALUE);
-          typeof(r) == "object" ? r = new THREE.Vector2().fromArray(r) : null;
+          let r = convert(args.VALUE);
+          switch (args.PROPERTY) {
+            case "repeat":
+            case "center":
+            case "offset":
+              r = new THREE.Vector2().fromArray(r);
+              break;
+          }
           texture[args.PROPERTY] = r;
           texture.needsUpdate = true;
         }
@@ -2201,7 +2274,7 @@
           const texture = assets.textures.get(args.NAME);
           if (!texture) {console.warn(`No texture named ${args.NAME}`); return;}
 
-          texture.mapping = JSON.parse(args.VALUE);
+          texture.mapping = convert(args.VALUE);
           texture.needsUpdate = true;
         }
 
@@ -2210,7 +2283,7 @@
           if (!cam) {console.warn(`No camera named ${args.NAME}`); return;}
 
           if (cam.isCamera) {
-            cam[args.PROPERTY] = JSON.parse(args.VALUE);
+            cam[args.PROPERTY] = convert(args.VALUE);
             cam.updateProjectionMatrix();
           } else console.error(`${args.NAME} is not a camera!`);
         }
@@ -2218,7 +2291,7 @@
           const cam = assets.objects.get(args.NAME);
           if (!cam) {console.warn(`No camera named ${args.NAME}`); return;}
 
-          return JSON.stringify(cam[args.PROPERTY]);
+          return toString(cam[args.PROPERTY]);
         }
 
         setLight(args) {
@@ -2242,7 +2315,7 @@
             scene.add(r);
           } else {
             //texture? color?
-            args.PROPERTY == "map" ? r = assets.textures.get(args.VALUE) : typeof(r) == "string" && r.at(0) == "#" ? r = new THREE.Color(r) : r = JSON.parse(r);
+            args.PROPERTY == "map" ? r = assets.textures.get(args.VALUE) : typeof(r) == "string" && r.at(0) == "#" ? r = new THREE.Color(r) : r = convert(r);
             light[args.PROPERTY] = r;
           }
           } else console.error(`${args.NAME} is not a light!`);
@@ -2254,7 +2327,7 @@
           if (!light) {console.warn(`No light named ${args.NAME}`); return;}
 
           if (light.isSpotLight || light.isDirectionalLight ) {
-            light.target.position.set(...JSON.parse(args.VALUE));
+            light.target.position.set(...convert(args.VALUE));
             light.target.updateMatrixWorld();
           } else console.error(`${args.NAME} is not a light or it's an invalid type!`);
         }
@@ -2263,13 +2336,13 @@
           if (!light) {console.warn(`No light named ${args.NAME}`); return;}
 
           if (args.PROPERTY == "color") return "#" + light.color.getHexString();
-          return JSON.stringify(light[args.PROPERTY]);
+          return toString(light[args.PROPERTY]);
         }
         setLightShadow(args) {
           const light = assets.objects.get(args.NAME);
           if (!light || !light.shadow) {console.warn(`No light named ${args.NAME}, or it doesn't support shadows!`); return;}
 
-          const v = JSON.parse(args.VALUE);
+          const v = args.VALUE;
 
           if (args.PROPERTY == "scale") {
             light.shadow.mapSize.width = 2**v; 
@@ -2295,7 +2368,7 @@
 
         orbitControls(args) {
           const oc = assets.addons.get("orbitControls");
-          if (JSON.parse(args.MODE)) {
+          if (convert(args.MODE)) {
             oc ? oc.connect(renderer.canvas) : assets.addons.set("orbitControls", new OrbitControls(camera, renderer.canvas));
           } else { oc.disconnect(); oc.reset(); }
         }
@@ -2384,7 +2457,7 @@
           const i = assets.objects.get(args.NAME);
           if (!i) {console.warn(`No instance named ${args.NAME}`); return;}
           if (args.PROPERTY == "matrix") {
-            const m = new THREE.Matrix4().fromArray(JSON.parse(args.MATRIX));
+            const m = dummyMatrix4.fromArray(convert(args.MATRIX));
             i.setMatrixAt(args.INDEX-1, m);
             i.instanceMatrix.needsUpdate = true;
           } else {
@@ -2392,35 +2465,58 @@
             i.instanceColor.needsUpdate = true;
           }
         }
+       // Thanks to @.warnt. for this setInstance suggestion upgrade code!
+       setInstance2(args, util) {
+          const i = assets.objects.get(args.NAME);
+          if (!i) {console.warn(`No instance named ${args.NAME}`); return;}
+
+          let list = util.target.lookupVariableByNameAndType( args.LIST, "list" );
+           if (!list) return;
+           list = list.value;
+
+            i.instanceMatrix.array.set( list );
+            i.instanceMatrix.needsUpdate = true;
+        }
+       
+        getInstance(args) {
+          const i = assets.objects.get(args.NAME);
+          if (!i) {console.warn(`No instance named ${args.NAME}`); return;}
+          if (args.PROPERTY == "matrix") {
+            i.getMatrixAt(args.INDEX-1, dummyMatrix4);
+            return toString(dummyMatrix4.elements);
+          } else {
+            const color = new THREE.Color(); //should use a dummyColor???
+            i.getColorAt(args.INDEX-1, color);
+            return color.getHexString();
+          }
+        }
 
         getMatrixTransform(args) {
-          const m = new THREE.Matrix4().fromArray(JSON.parse(args.M));
+          const m = dummyObject.matrix.fromArray(convert(args.M));
 
-          const position = new THREE.Vector3();
-          const quaternion = new THREE.Quaternion();
-          const scale = new THREE.Vector3();
+          const position = dummyVector3;
+          const quaternion = dummyQuaternion;
+          const scale = dummyVector3.clone();
 
           m.decompose(position, quaternion, scale);
 
           const decomposed = {
-          "position": position,
-          "rotation": quaternion,
-          "scale": scale
+            "position": position,
+            "rotation": quaternion,
+            "scale": scale
           };
           let v3 = decomposed[args.TRANSFORM].toArray();
-          args.TRANSFORM == "rotation" ? v3 = new THREE.Euler().setFromQuaternion(quaternion).toArray().slice(0,3).map(r => THREE.MathUtils.radToDeg(r)) : null;
-          return JSON.stringify(v3); 
+          args.TRANSFORM == "rotation" ? v3 = dummyEuler.clone().setFromQuaternion(quaternion).toArray().slice(0,3).map(r => THREE.MathUtils.radToDeg(r)) : null;
+          return toString(v3); 
         }
 
         doMatrix(args) {
-          const m = new THREE.Matrix4();
-          const position = new THREE.Vector3().fromArray(JSON.parse(args.POSITION));
-          const quaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler().fromArray(JSON.parse(args.ROTATION).map(a => THREE.MathUtils.degToRad(a))));
-          const scale = new THREE.Vector3().fromArray(JSON.parse(args.SCALE));
+          dummyObject.position.set(...convert(args.POSITION, 3));
+          dummyObject.rotation.set(...convert(args.ROTATION, 3).map(a => THREE.MathUtils.degToRad(a)));
+          dummyObject.scale.set(...convert(args.SCALE, 3));
+          dummyObject.updateMatrix();
 
-          m.compose(position, quaternion, scale);
-
-          return JSON.stringify(m.elements);
+          return toString(dummyObject.matrix.elements);
         }
 
         async loadFont() {
@@ -2561,7 +2657,7 @@ SOFTWARE.
                                                   result.cssFontStyle = "normal";
                                               }
                                               
-                                              return JSON.stringify(result);
+                                              return toString(result);
           }
 
           runtime.extensionStorage[extensionID].fonts[file[0].name] = url;
@@ -2583,13 +2679,19 @@ SOFTWARE.
           delete runtime.extensionStorage[extensionID].fonts[args.FILE];
         }
 
-        async loadAudio(args) {
-          const sounds = vm.editingTarget.getSounds();
-          const file = sounds[sounds.findIndex(a=>a.name==args.FILE)].asset.data.buffer;
+        async loadAudio(args, util) {
+          let file, buffer;
+          if (args.FILE.startsWith("data:audio")) {
+            file = args.FILE;
+            buffer = await three.AudioLoader.loadAsync( file );
+          }
+          else {
+            const sounds = util.target.getSounds();
+            file = sounds[sounds.findIndex(a=>a.name==args.FILE)].asset.data.buffer;
 
-          const audioContext = THREE.AudioContext.getContext();
-          const buffer = await audioContext.decodeAudioData(file.slice(0));
-
+            const audioContext = THREE.AudioContext.getContext();
+            buffer = await audioContext.decodeAudioData(file.slice(0));
+          }
           assets.audios.set(args.NAME, buffer);
         }
 
@@ -2617,8 +2719,8 @@ SOFTWARE.
           const sound = assets.objects.get(args.NAME);
           if (!sound) {console.warn(`No sound named ${args.NAME}`); return;}
 
-          if (args.DATA == "offset") { sound.offset = JSON.parse(args.DATA); return;}
-          args.DATA ? sound[args.PROPERTY](JSON.parse(args.DATA)) : sound[args.PROPERTY]();
+          if (args.DATA == "offset") { sound.offset = args.DATA; return;}
+          args.DATA ? sound[args.PROPERTY](args.DATA) : sound[args.PROPERTY]();
         }
         doAudio(args) {this.setAudio(args);}
         setAudioBoolean(args) {this.setAudio(args);}
@@ -2633,7 +2735,7 @@ SOFTWARE.
           const sound = assets.objects.get(args.NAME);
           if (!sound) {console.warn(`No sound named ${args.NAME}`); return;}
 
-          return JSON.stringify(sound[args.PROPERTY]());}
+          return toString(sound[args.PROPERTY]());}
         stopAllAudios() {
           assets.objects.forEach(
             a => {if (a.type == "Audio") {a.setLoopEnd(0); a.stop();}}
@@ -2641,9 +2743,9 @@ SOFTWARE.
         }
 
         raycast(args) {
-          const v3 = new THREE.Vector3().fromArray(JSON.parse(args.V));
-          const d3 = new THREE.Vector3(0,0,-1);
-          const e = new THREE.Euler().fromArray(JSON.parse(args.D));
+          const v3 = dummyVector3.clone().fromArray(convert(args.V));
+          const d3 = dummyVector3.set(0,0,-1);
+          const e = dummyEuler.clone().fromArray(convert(args.D));
           e.order = args.ORDER;
           d3.applyEuler(e);
 
@@ -2651,15 +2753,15 @@ SOFTWARE.
           storedRaycast.set(v3, d3);
         }
         raycastCamera(args) {
-          const v2 = new THREE.Vector2().fromArray(JSON.parse(args.XY));
+          const v2 = new THREE.Vector2().fromArray(convert(args.XY));
           storedRaycast = new THREE.Raycaster();
           storedRaycast.setFromCamera(v2, camera );
         }
         getRaycast(args) {
           const r = storedRaycast.intersectObject( scene );
-          if (args.PROPERTY == "object") return JSON.stringify(r.map(i => i[args.PROPERTY].name));
-          else if (args.PROPERTY == "point" || args.PROPERTY == "normal") return JSON.stringify(r.map(i => i[args.PROPERTY].toArray()));
-          else return JSON.stringify(r.map(i => i[args.PROPERTY]));
+          if (args.PROPERTY == "object") return toString(r.map(i => i[args.PROPERTY].name));
+          else if (args.PROPERTY == "point" || args.PROPERTY == "normal") return toString(r.map(i => i[args.PROPERTY].toArray()));
+          else return toString(r.map(i => i[args.PROPERTY]));
         }
         isRaycast(args) {
           const obj = assets.objects.get(args.NAME);
