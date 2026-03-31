@@ -295,26 +295,7 @@
     return {name: file[0].name, url: url};
   }
 
-const typedArray = new Float64Array(100);
-
-function convert(s, l=100) {
-  if (typeof s !== "string") return s;
-  if (s === "true") return true;
-  if (s === "false") return false;
-
-  if (s.startsWith("[") && s.endsWith("]")) {
-    typedArray.set(s.slice(1, -1).split(",").map(Number)); 
-    return typedArray.slice(0,l);
-  }
-  const n = Number(s);
-  return isNaN(n) ? s : n;
-}
-  function toString(a) {
-    if (ArrayBuffer.isView(a) || Array.isArray(a)) {
-      return `[${a.join(",")}]`;
-    }
-    return String(a);
-  }
+  const matrixArray = new Float32Array(16);
 
   Promise.resolve(init())
     .then(() => {
@@ -540,7 +521,7 @@ function convert(s, l=100) {
                   NAME: { type: "string", defaultValue: "forest" },
                   INDEX: { type: "number", defaultValue: 1 },
                   PROPERTY: { type: "string", menu: "instanceItems"},
-                  MATRIX: { type: "string", defaultValue: "[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]" },
+                  MATRIX: { type: "Array", defaultValue: "1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1"},
                 },
               },
               {
@@ -579,7 +560,7 @@ function convert(s, l=100) {
                 arguments: {
                   TRANSFORM: { type: Scratch.ArgumentType.STRING, menu: "transformType" },
                   OBJECT: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
-                  VALUE: { type: "string", defaultValue: "[0,0,0]" },
+                  VALUE: { type: "Array", defaultValue: "0,0,0"},
                 },
               },
               {
@@ -607,7 +588,7 @@ function convert(s, l=100) {
               },
               {
                 opcode: "getTransform",
-                blockType: Scratch.BlockType.REPORTER,
+                blockType: Scratch.BlockType.ARRAY,
                 text: "get [TRANSFORM] of object [OBJECT]",
                 color1: "#5C80BC",
                 arguments: {
@@ -623,7 +604,7 @@ function convert(s, l=100) {
 
               {
                 opcode: "vector2",
-                blockType: Scratch.BlockType.REPORTER,
+                blockType: Scratch.BlockType.ARRAY,
                 text: "vector2 [X] [Y]",
                 color1: "#5C80BC",
                 arguments: {
@@ -633,7 +614,7 @@ function convert(s, l=100) {
               },
               {
                 opcode: "vector3",
-                blockType: Scratch.BlockType.REPORTER,
+                blockType: Scratch.BlockType.ARRAY,
                 text: "vector3 [X] [Y] [Z]",
                 color1: "#5C80BC",
                 arguments: {
@@ -649,95 +630,106 @@ function convert(s, l=100) {
                 color1: "#5C80BC",
                 arguments: {
                   XYZ: { type: Scratch.ArgumentType.STRING, menu: "XYZ" },
-                  V3: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,1,2]" },
+                  V3: { type: Scratch.ArgumentType.ARRAY},
                 },
               },
               {
                 opcode: "operateVector",
-                blockType: Scratch.BlockType.REPORTER,
+                blockType: Scratch.BlockType.ARRAY,
                 text: "get [OPERATION] of [V]",
                 color1: "#5C80BC",
                 arguments: {
                   OPERATION: { type: Scratch.ArgumentType.STRING, menu: "vectorOperations" },
-                  V: { type: Scratch.ArgumentType.STRING, defaultValue: "[1,2,3]" },
+                  V: { type: Scratch.ArgumentType.ARRAY},
                 },
               },
               {
                 opcode: "getVectorProjected",
-                blockType: Scratch.BlockType.REPORTER,
+                blockType: Scratch.BlockType.ARRAY,
                 text: "get [V] projected to stage",
                 color1: "#5C80BC",
                 arguments: {
-                  V: { type: Scratch.ArgumentType.STRING, defaultValue: "[-1,2,-4]" },
+                  V: { type: Scratch.ArgumentType.ARRAY},
                 },
               },
               {
                 opcode: "operate2Vector",
-                blockType: Scratch.BlockType.REPORTER,
+                blockType: Scratch.BlockType.ARRAY,
                 text: "get [V1] [OPERATION] [V2]",
                 color1: "#5C80BC",
                 arguments: {
                   OPERATION: { type: Scratch.ArgumentType.STRING, menu: "vector2Operations" },
-                  V1: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,0,0]" },
-                  V2: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,1,2]" },
+                  V1: { type: Scratch.ArgumentType.ARRAY},
+                  V2: { type: Scratch.ArgumentType.ARRAY},
                 },
               },
               {
                 opcode: "moveVector",
-                blockType: Scratch.BlockType.REPORTER,
+                blockType: Scratch.BlockType.ARRAY,
                 text: "move [V] [STEPS] steps in direction [D] order [ORDER]",
                 color1: "#5C80BC",
                 arguments: {
-                  V: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,0,0]" },
-                  D: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,0,0]" },
+                  V: { type: Scratch.ArgumentType.ARRAY},
+                  D: { type: Scratch.ArgumentType.ARRAY},
                   STEPS: { type: Scratch.ArgumentType.NUMBER, defaultValue: "5" },
                   ORDER: { type: Scratch.ArgumentType.STRING, menu: "XYZorder" },
                 },
               },
               {
                 opcode: "directionToVector",
-                blockType: Scratch.BlockType.REPORTER,
+                blockType: Scratch.BlockType.ARRAY,
                 text: "direction from [V1] to [V2]",
                 color1: "#5C80BC",
                 arguments: {
-                  V1: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,0,0]" },
-                  V2: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,1,2]" },
+                  V1: { type: Scratch.ArgumentType.ARRAY},
+                  V2: { type: Scratch.ArgumentType.ARRAY},
                 },
               },
               {
                 opcode: "interpolateVectors",
-                blockType: Scratch.BlockType.REPORTER,
-                text: "interpolation of [V1] to [V2] at [A]%",
+                blockType: Scratch.BlockType.ARRAY,
+                text: "interpolate [V1] to [V2] at [A]%",
                 color1: "#5C80BC",
                 arguments: {
                   A: { type: "number", defaultValue: "50" },
-                  V1: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,0,0]" },
-                  V2: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,1,2]" },
+                  V1: { type: Scratch.ArgumentType.ARRAY},
+                  V2: { type: Scratch.ArgumentType.ARRAY},
                 },
               },
 
               {blockType: "label",
               text: Scratch.translate("Matrix")},
 
-              {
+              /*{
                 opcode: "doMatrix",
                 blockType: Scratch.BlockType.REPORTER,
                 text: "create matrix from position [POSITION] rotation [ROTATION] scale [SCALE]",
                 color1: "#5C80BC",
                 arguments: {
-                  POSITION: { type: Scratch.ArgumentType.STRING, defaultValue: "[1,0,0]" },
-                  ROTATION: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,90,0]" },
-                  SCALE: { type: Scratch.ArgumentType.STRING, defaultValue: "[1,1,1]" },
+                  POSITION: { type: Scratch.ArgumentType.STRING, defaultValue: "1,0,0"},
+                  ROTATION: { type: Scratch.ArgumentType.STRING, defaultValue: "0,90,0"},
+                  SCALE: { type: Scratch.ArgumentType.STRING, defaultValue: "1,1,1"},
+                },
+              },*/
+              {
+                opcode: "doMatrix",
+                blockType: Scratch.BlockType.ARRAY,
+                text: "create matrix from position [P] rotation [R] scale [S] ",
+                color1: "#5C80BC",
+                arguments: {
+                  P: { type: "Array"},
+                  R: { type: "Array"},
+                  S: { type: "Array"},
                 },
               },
               {
                 opcode: "getMatrixTransform",
-                blockType: Scratch.BlockType.REPORTER,
+                blockType: Scratch.BlockType.ARRAY,
                 text: "get [TRANSFORM] of matrix [M]",
                 color1: "#5C80BC",
                 arguments: {
                   TRANSFORM: { type: Scratch.ArgumentType.STRING, menu: "transformType" },
-                  M: { type: Scratch.ArgumentType.STRING, defaultValue: "[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]" },
+                  M: { type: Scratch.ArgumentType.ARRAY},
                 },
               },
 
@@ -798,6 +790,7 @@ function convert(s, l=100) {
                   Y: { type: Scratch.ArgumentType.NUMBER, defaultValue: 5 },
                 },
               },
+              //custom torus?
               "---",
               {
                 opcode: "setGeometry",
@@ -806,7 +799,7 @@ function convert(s, l=100) {
                 color1: "#7c4d5e",
                 arguments: {
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "geometryProperties"},
-                  DATA: { type: Scratch.ArgumentType.STRING, defaultValue: "[-0.5,0.5,0,0.5,0.5,0,-0.5,-0.5,0,0.5,-0.5,0]"},
+                  DATA: { type: Scratch.ArgumentType.STRING, menu: "lists"},
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "cube" },
                 },
               },
@@ -961,7 +954,7 @@ function convert(s, l=100) {
                 arguments: {
                   NAME: { type: "string", defaultValue: "sky"},
                   PROPERTY: { type: "string", menu: "textureProperties"},
-                  VALUE: { type: "string", defaultValue: "[1,1]"},
+                  VALUE: { type: "string", defaultValue: "1,1"},
                 }
               },
               {
@@ -1086,7 +1079,7 @@ function convert(s, l=100) {
                 color1: "#5FAD56",
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "light" },
-                  VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,0,0]"},
+                  VALUE: { type: Scratch.ArgumentType.ARRAY},
                 }
               },
               {
@@ -1220,8 +1213,8 @@ function convert(s, l=100) {
                 blockType: Scratch.BlockType.COMMAND,
                 text: "raycast from [V] in direction [D] [ORDER]",
                 arguments: {
-                  V: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,0,0]"},
-                  D: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,0,0]"},
+                  V: { type: Scratch.ArgumentType.STRING, defaultValue: "0,0,0"},
+                  D: { type: Scratch.ArgumentType.STRING, defaultValue: "0,0,0"},
                   ORDER: { type: Scratch.ArgumentType.STRING, menu: "XYZorder"},
                 }
               },
@@ -1230,7 +1223,7 @@ function convert(s, l=100) {
                 blockType: Scratch.BlockType.COMMAND,
                 text: "raycast from camera, mouse position [XY]",
                 arguments: {
-                  XY: { type: Scratch.ArgumentType.NUMBER, defaultValue: "[0,0]"},
+                  XY: { type: Scratch.ArgumentType.NUMBER, defaultValue: "0,0"},
                 }
               },
               {
@@ -1792,8 +1785,8 @@ function convert(s, l=100) {
           return three.renderer.info[args.VALUE];
         }
 
-        vector2(args) {return `[${args.X}, ${args.Y}]`;}
-        vector3(args) {return `[${args.X}, ${args.Y}, ${args.Z}]`;}
+        vector2(args) {return [args.X,args.Y];}
+        vector3(args) {return [args.X,args.Y,args.Z];}
 
         renderer(args) {
           const keys = args.PROPERTY.split(".");
@@ -1803,13 +1796,13 @@ function convert(s, l=100) {
 
           if (args.PROPERTY == "autoRender") 
           {
-            if (convert(args.VALUE)) loopId = requestAnimationFrame(loop);
+            if ((args.VALUE)) loopId = requestAnimationFrame(loop);
             else {
               cancelAnimationFrame(loopId); 
               loopId = null;
             }
           } 
-          else current[keys[keys.length - 1]] = convert(args.VALUE);
+          else current[keys[keys.length - 1]] = (args.VALUE);
         }
         rendererClear(args) {
           three.renderer[args.B]();
@@ -1819,7 +1812,7 @@ function convert(s, l=100) {
           render(true);
         }
         rendererShadow(args) {
-          three.renderer.shadowMap.type = convert(args.PROPERTY);
+          three.renderer.shadowMap.type = (args.PROPERTY);
         }
         getRenderer(args) {
           const keys = args.PROPERTY.split(".");
@@ -1844,7 +1837,7 @@ function convert(s, l=100) {
             scene.overrideMaterial = material;
           }
           else if (args.PROPERTY == "fog") {
-            args.VALUE == "[fog]" ?
+            args.VALUE == "[fog]"?
             scene.fog = storedFog
             : scene.fog = null;
           }
@@ -1862,7 +1855,7 @@ function convert(s, l=100) {
           let value = scene[args.PROPERTY];
           if (value) {
             if (value.isColor) return "#" + value.getHexString();
-            else return toString(value);
+            else return (value);
           }
         }
         createFog(args) {
@@ -1890,7 +1883,8 @@ function convert(s, l=100) {
           const obj = assets.objects.get(args.OBJECT);
           if (!obj) {console.warn(`No object named ${args.OBJECT}`); return;}
 
-          let values = convert(args.VALUE);
+          let values = (args.VALUE);
+          console.log(args)
           args.TRANSFORM == "rotation" ? values = values.map(a => THREE.MathUtils.degToRad(a)) : null;
           dummyVector3.fromArray(values);
 
@@ -1911,7 +1905,7 @@ function convert(s, l=100) {
           } else v3 = obj[args.TRANSFORM].toArray();
           args.TRANSFORM == "rotation" || args.TRANSFORM == "getWorldDirection" ? v3 = v3.slice(0,3).map(r=> THREE.MathUtils.radToDeg(r)) : null;
 
-          return toString(v3);
+          return (v3);
         }
 
         transformTransform(args) {
@@ -1929,30 +1923,32 @@ function convert(s, l=100) {
         }
 
         getAxis(args) {
-          return convert(args.V3)[{"x":0, "y":1, "z": 2}[args.XYZ]];
+          return (args.V3)[{"x":0, "y":1, "z": 2}[args.XYZ]];
         }
 
         operateVector(args) {
-          const v = dummyVector3.fromArray(convert(args.V));
+          const v = dummyVector3.fromArray((args.V));
           let r = v[args.OPERATION]();
           typeof(r) == "object" ? r = r.toArray() : null;
-          return toString(r);
+          return (r);
         }
 
         operate2Vector(args) {
-          const v1 = dummyVector3.fromArray(convert(args.V1));
-          let v2 = convert(args.V2);
+          console.log(args)
+          const v1 = dummyVector3.fromArray((args.V1));
+          let v2 = (args.V2);
           if (args.OPERATION == "applyEuler") v2 = dummyEuler.fromArray(v2);
           else typeof(v2) == "number" ? null : v2 = dummyVector3.clone().fromArray(v2);
           let r = v1[args.OPERATION](v2);
           typeof(r) == "object" ? r = r.toArray() : null;
-          return toString(r);
+          console.log(r)
+          return (r);
         }
 
         moveVector(args) {
-          let v3 = dummyVector3.fromArray(convert(args.V));
+          let v3 = dummyVector3.fromArray((args.V));
 
-          const [x,y,z] = convert(args.D);
+          const [x,y,z] = (args.D);
           const euler = dummyEuler.set(
             THREE.MathUtils.degToRad(x), 
             THREE.MathUtils.degToRad(y), 
@@ -1962,33 +1958,33 @@ function convert(s, l=100) {
           const direction = dummyVector3.set(0, 0, -1).applyEuler(euler).normalize();
 
           v3.add(direction.multiplyScalar(args.STEPS));
-          return toString(v3.toArray());
+          return (v3.toArray());
         }
 
         getVectorProjected(args) {
-          const v3 = dummyVector3.clone().fromArray(convert(args.V));
+          const v3 = dummyVector3.clone().fromArray((args.V));
           v3.project(camera);
           const v2 = new THREE.Vector2(...three.skin.size.map(m=>m/2));
           const r = [v3.x*v2.x, v3.y*v2.y];
-          return toString(r);
+          return (r);
         }
 
         directionToVector(args) {
-          const v1 = dummyVector3.clone().fromArray(convert(args.V1));
-          const v2 = dummyVector3.clone().fromArray(convert(args.V2));
+          const v1 = dummyVector3.clone().fromArray((args.V1));
+          const v2 = dummyVector3.clone().fromArray((args.V2));
 
           const direction = v1.sub(v2).normalize();
           const pitch = THREE.MathUtils.radToDeg( Math.atan2(-direction.y, Math.sqrt(direction.x*direction.x + direction.z*direction.z)) );
           const yaw = THREE.MathUtils.radToDeg( Math.atan2(direction.x, direction.z) );
 
-          return toString([pitch,yaw,0]);
+          return ([pitch,yaw,0]);
         }
 
         interpolateVectors(args) {
-          const v1 = dummyVector3.clone().fromArray(convert(args.V1));
-          const v2 = dummyVector3.clone().fromArray(convert(args.V2));
+          const v1 = dummyVector3.clone().fromArray((args.V1));
+          const v2 = dummyVector3.clone().fromArray((args.V2));
           const r = v1.lerp(v2, args.A/100);
-          return toString(r.toArray());
+          return (r.toArray());
         }
 
         addObject(args) {
@@ -2095,14 +2091,14 @@ function convert(s, l=100) {
           const obj = assets.objects.get(args.NAME);
           if (!obj) {console.warn(`No object named ${args.NAME}`); return;}
 
-          obj.traverse(o=>{o[args.PROPERTY] = convert(args.DATA);});
-          obj[args.PROPERTY] = convert(args.DATA);
+          obj.traverse(o=>{o[args.PROPERTY] = (args.DATA);});
+          obj[args.PROPERTY] = (args.DATA);
         }
         getObjectBool(args) {
           const obj = assets.objects.get(args.NAME);
           if (!obj) {console.warn(`No object named ${args.NAME}`); return;}
 
-          return toString(obj[args.PROPERTY]);
+          return (obj[args.PROPERTY]);
         }
 
         createGeometry(args) {
@@ -2133,7 +2129,7 @@ function convert(s, l=100) {
           if (!geometry) {console.warn(`No geometry named ${args.NAME}`); return;}
 
           let data, dataLength;
-          data = JSON.parse(args.DATA); //should avoid parse, but for geometries (updated very little in theory) it shouldnt be a problem right?
+          data = args.DATA.split(","); if (!data) return;
 
           switch (args.PROPERTY) {
             case "uv":
@@ -2158,9 +2154,9 @@ function convert(s, l=100) {
               result.push([a[i],a[i+1],a[i+2]]);
           }
 
-          return toString(result).replaceAll("],", "] ").slice(1,-1);
+          return (result).replaceAll("],", "] ").slice(1,-1);
           */
-         return toString(Object.values(a));
+         return (Object.values(a));
         }
 
         createMaterial(args) {
@@ -2189,7 +2185,7 @@ function convert(s, l=100) {
           this.setMaterial(args);
         }
         setBoolMaterial(args) {
-          args.DATA = convert(args.DATA);
+          args.DATA = (args.DATA);
           this.setMaterial(args);
         }
         setMapMaterial(args) {
@@ -2199,12 +2195,12 @@ function convert(s, l=100) {
         }
         setMaterialSide(args) {
           args.PROPERTY = "side";
-          args.DATA = convert(args.DATA);
+          args.DATA = (args.DATA);
           this.setMaterial(args);
         }
         setMaterialBlending(args) {
           args.PROPERTY = "blending";
-          args.DATA = convert(args.DATA);
+          args.DATA = (args.DATA);
           this.setMaterial(args);
         }
         setMaterialClipping(args) {
@@ -2226,7 +2222,7 @@ function convert(s, l=100) {
           try { m2 = JSON.parse(m2);}
           catch {m2 = [m2];}
           m1.push(...m2);
-          return toString(m1);
+          return (m1);
         }
 
         async loadTexture(args, util) {
@@ -2259,7 +2255,7 @@ function convert(s, l=100) {
           const texture = assets.textures.get(args.NAME);
           if (!texture) {console.warn(`No texture named ${args.NAME}`); return;}
 
-          let r = convert(args.VALUE);
+          let r = (args.VALUE);
           switch (args.PROPERTY) {
             case "repeat":
             case "center":
@@ -2274,7 +2270,7 @@ function convert(s, l=100) {
           const texture = assets.textures.get(args.NAME);
           if (!texture) {console.warn(`No texture named ${args.NAME}`); return;}
 
-          texture.mapping = convert(args.VALUE);
+          texture.mapping = (args.VALUE);
           texture.needsUpdate = true;
         }
 
@@ -2283,7 +2279,7 @@ function convert(s, l=100) {
           if (!cam) {console.warn(`No camera named ${args.NAME}`); return;}
 
           if (cam.isCamera) {
-            cam[args.PROPERTY] = convert(args.VALUE);
+            cam[args.PROPERTY] = (args.VALUE);
             cam.updateProjectionMatrix();
           } else console.error(`${args.NAME} is not a camera!`);
         }
@@ -2291,7 +2287,7 @@ function convert(s, l=100) {
           const cam = assets.objects.get(args.NAME);
           if (!cam) {console.warn(`No camera named ${args.NAME}`); return;}
 
-          return toString(cam[args.PROPERTY]);
+          return (cam[args.PROPERTY]);
         }
 
         setLight(args) {
@@ -2315,7 +2311,7 @@ function convert(s, l=100) {
             scene.add(r);
           } else {
             //texture? color?
-            args.PROPERTY == "map" ? r = assets.textures.get(args.VALUE) : typeof(r) == "string" && r.at(0) == "#" ? r = new THREE.Color(r) : r = convert(r);
+            args.PROPERTY == "map" ? r = assets.textures.get(args.VALUE) : typeof(r) == "string" && r.at(0) == "#" ? r = new THREE.Color(r) : r = (r);
             light[args.PROPERTY] = r;
           }
           } else console.error(`${args.NAME} is not a light!`);
@@ -2327,7 +2323,7 @@ function convert(s, l=100) {
           if (!light) {console.warn(`No light named ${args.NAME}`); return;}
 
           if (light.isSpotLight || light.isDirectionalLight ) {
-            light.target.position.set(...convert(args.VALUE));
+            light.target.position.set(...(args.VALUE));
             light.target.updateMatrixWorld();
           } else console.error(`${args.NAME} is not a light or it's an invalid type!`);
         }
@@ -2336,7 +2332,7 @@ function convert(s, l=100) {
           if (!light) {console.warn(`No light named ${args.NAME}`); return;}
 
           if (args.PROPERTY == "color") return "#" + light.color.getHexString();
-          return toString(light[args.PROPERTY]);
+          return (light[args.PROPERTY]);
         }
         setLightShadow(args) {
           const light = assets.objects.get(args.NAME);
@@ -2368,7 +2364,7 @@ function convert(s, l=100) {
 
         orbitControls(args) {
           const oc = assets.addons.get("orbitControls");
-          if (convert(args.MODE)) {
+          if ((args.MODE)) {
             oc ? oc.connect(renderer.canvas) : assets.addons.set("orbitControls", new OrbitControls(camera, renderer.canvas));
           } else { oc.disconnect(); oc.reset(); }
         }
@@ -2457,7 +2453,7 @@ function convert(s, l=100) {
           const i = assets.objects.get(args.NAME);
           if (!i) {console.warn(`No instance named ${args.NAME}`); return;}
           if (args.PROPERTY == "matrix") {
-            const m = dummyMatrix4.fromArray(convert(args.MATRIX));
+            const m = dummyMatrix4.fromArray((args.MATRIX));
             i.setMatrixAt(args.INDEX-1, m);
             i.instanceMatrix.needsUpdate = true;
           } else {
@@ -2473,6 +2469,7 @@ function convert(s, l=100) {
           let list = util.target.lookupVariableByNameAndType( args.LIST, "list" );
            if (!list) return;
            list = list.value;
+           console.log(list)
 
             i.instanceMatrix.array.set( list );
             i.instanceMatrix.needsUpdate = true;
@@ -2483,7 +2480,7 @@ function convert(s, l=100) {
           if (!i) {console.warn(`No instance named ${args.NAME}`); return;}
           if (args.PROPERTY == "matrix") {
             i.getMatrixAt(args.INDEX-1, dummyMatrix4);
-            return toString(dummyMatrix4.elements);
+            return (dummyMatrix4.elements);
           } else {
             const color = new THREE.Color(); //should use a dummyColor???
             i.getColorAt(args.INDEX-1, color);
@@ -2492,7 +2489,7 @@ function convert(s, l=100) {
         }
 
         getMatrixTransform(args) {
-          const m = dummyObject.matrix.fromArray(convert(args.M));
+          const m = dummyObject.matrix.fromArray((args.M));
 
           const position = dummyVector3;
           const quaternion = dummyQuaternion;
@@ -2507,17 +2504,42 @@ function convert(s, l=100) {
           };
           let v3 = decomposed[args.TRANSFORM].toArray();
           args.TRANSFORM == "rotation" ? v3 = dummyEuler.clone().setFromQuaternion(quaternion).toArray().slice(0,3).map(r => THREE.MathUtils.radToDeg(r)) : null;
-          return toString(v3); 
+          return (v3); 
         }
 
-        doMatrix(args) {
-          dummyObject.position.set(...convert(args.POSITION, 3));
-          dummyObject.rotation.set(...convert(args.ROTATION, 3).map(a => THREE.MathUtils.degToRad(a)));
-          dummyObject.scale.set(...convert(args.SCALE, 3));
-          dummyObject.updateMatrix();
+doMatrix(args) {
+    const p = args.P;
+    const r = args.R.map(a => THREE.MathUtils.degToRad(a));
+    const s = args.S;
 
-          return toString(dummyObject.matrix.elements);
-        }
+    const c1 = Math.cos(r[0]), s1 = Math.sin(r[0]);
+    const c2 = Math.cos(r[1]), s2 = Math.sin(r[1]);
+    const c3 = Math.cos(r[2]), s3 = Math.sin(r[2]);
+
+    const ae = c1 * c3, af = c1 * s3, be = s1 * c3, bf = s1 * s3;
+
+    matrixArray[0] = c2 * c3 * s[0];
+    matrixArray[1] = c2 * s3 * s[0];
+    matrixArray[2] = -s2 * s[0];
+    matrixArray[3] = 0;
+
+    matrixArray[4] = (be * s2 - af) * s[1];
+    matrixArray[5] = (bf * s2 + ae) * s[1];
+    matrixArray[6] = s1 * c2 * s[1];
+    matrixArray[7] = 0;
+
+    matrixArray[8] = (ae * s2 + bf) * s[2];
+    matrixArray[9] = (af * s2 - be) * s[2];
+    matrixArray[10] = c1 * c2 * s[2];
+    matrixArray[11] = 0;
+
+    matrixArray[12] = p[0];
+    matrixArray[13] = p[1];
+    matrixArray[14] = p[2];
+    matrixArray[15] = 1;
+
+    return (matrixArray);
+}
 
         async loadFont() {
           //get ttf file
@@ -2543,7 +2565,7 @@ function convert(s, l=100) {
             };
             fr.readAsArrayBuffer(file[0]);
           });
-          //convert to json
+          // to json
           function convertToFaceType(font) {
 /*
 https://github.com/gero3/facetype.js
@@ -2657,7 +2679,7 @@ SOFTWARE.
                                                   result.cssFontStyle = "normal";
                                               }
                                               
-                                              return toString(result);
+                                              return (result);
           }
 
           runtime.extensionStorage[extensionID].fonts[file[0].name] = url;
@@ -2735,7 +2757,7 @@ SOFTWARE.
           const sound = assets.objects.get(args.NAME);
           if (!sound) {console.warn(`No sound named ${args.NAME}`); return;}
 
-          return toString(sound[args.PROPERTY]());}
+          return (sound[args.PROPERTY]());}
         stopAllAudios() {
           assets.objects.forEach(
             a => {if (a.type == "Audio") {a.setLoopEnd(0); a.stop();}}
@@ -2743,9 +2765,9 @@ SOFTWARE.
         }
 
         raycast(args) {
-          const v3 = dummyVector3.clone().fromArray(convert(args.V));
+          const v3 = dummyVector3.clone().fromArray((args.V));
           const d3 = dummyVector3.set(0,0,-1);
-          const e = dummyEuler.clone().fromArray(convert(args.D));
+          const e = dummyEuler.clone().fromArray((args.D));
           e.order = args.ORDER;
           d3.applyEuler(e);
 
@@ -2753,15 +2775,15 @@ SOFTWARE.
           storedRaycast.set(v3, d3);
         }
         raycastCamera(args) {
-          const v2 = new THREE.Vector2().fromArray(convert(args.XY));
+          const v2 = new THREE.Vector2().fromArray((args.XY));
           storedRaycast = new THREE.Raycaster();
           storedRaycast.setFromCamera(v2, camera );
         }
         getRaycast(args) {
           const r = storedRaycast.intersectObject( scene );
-          if (args.PROPERTY == "object") return toString(r.map(i => i[args.PROPERTY].name));
-          else if (args.PROPERTY == "point" || args.PROPERTY == "normal") return toString(r.map(i => i[args.PROPERTY].toArray()));
-          else return toString(r.map(i => i[args.PROPERTY]));
+          if (args.PROPERTY == "object") return (r.map(i => i[args.PROPERTY].name));
+          else if (args.PROPERTY == "point" || args.PROPERTY == "normal") return (r.map(i => i[args.PROPERTY].toArray()));
+          else return (r.map(i => i[args.PROPERTY]));
         }
         isRaycast(args) {
           const obj = assets.objects.get(args.NAME);
