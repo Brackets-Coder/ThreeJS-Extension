@@ -506,7 +506,7 @@
                 text: "add instanced mesh [NAME] with geometry [GEOMETRY] material [MATERIAL] count [COUNT]",
                 color1: "#5FAD56",
                 arguments: {
-                  NAME: { type: "string", defaultValue: "forest" },
+                  NAME: { type: "string", defaultValue: "grass" },
                   GEOMETRY: { type: "string", defaultValue: "cube" },
                   MATERIAL: { type: "string", defaultValue: "red" },
                   COUNT: { type: "number", defaultValue: 7 },
@@ -518,7 +518,7 @@
                 text: "set instanced mesh [NAME] item [INDEX] [PROPERTY] to [MATRIX]",
                 color1: "#5FAD56",
                 arguments: {
-                  NAME: { type: "string", defaultValue: "forest" },
+                  NAME: { type: "string", defaultValue: "grass" },
                   INDEX: { type: "number", defaultValue: 1 },
                   PROPERTY: { type: "string", menu: "instanceItems"},
                   MATRIX: { type: "Array", defaultValue: "1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1"},
@@ -530,19 +530,19 @@
                 text: "set instanced mesh [NAME] matrix to [LIST]",
                 color1: "#5FAD56",
                 arguments: {
-                  NAME: { type: "string", defaultValue: "forest" },
+                  NAME: { type: "string", defaultValue: "grass" },
                   INDEX: { type: "number", defaultValue: 1 },
                   PROPERTY: { type: "string", menu: "instanceItems"},
-                  LIST: { type: "string", menu: "lists" },
+                  LIST: { type: "Array", menu: "lists" },
                 },
               },
               {
                 opcode: "getInstance",
-                blockType: Scratch.BlockType.REPORTER,
+                blockType: Scratch.BlockType.ARRAY,
                 text: "get instanced mesh [NAME] item [INDEX] [PROPERTY]",
                 color1: "#5FAD56",
                 arguments: {
-                  NAME: { type: "string", defaultValue: "forest" },
+                  NAME: { type: "string", defaultValue: "grass" },
                   INDEX: { type: "number", defaultValue: 1 },
                   PROPERTY: { type: "string", menu: "instanceItems"},
                 },
@@ -799,13 +799,13 @@
                 color1: "#7c4d5e",
                 arguments: {
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "geometryProperties"},
-                  DATA: { type: Scratch.ArgumentType.STRING, menu: "lists"},
+                  DATA: { type: Scratch.ArgumentType.ARRAY, /*menu: "lists"*/}, //could be a list, but there's a block that returns the list as an array, so...
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "cube" },
                 },
               },
               {
                 opcode: "getGeometry",
-                blockType: Scratch.BlockType.REPORTER,
+                blockType: Scratch.BlockType.ARRAY,
                 text: "get geometry [NAME] [PROPERTY]",
                 color1: "#7c4d5e",
                 arguments: {
@@ -1419,6 +1419,7 @@
                 { text: Scratch.translate("Texture Points [UV]"), value: "uv" },
                 { text: Scratch.translate("Face Points (Normals) [XYZ]"), value: "normal" },
                 { text: Scratch.translate("Vertex Colors [RGB]"), value: "color" },
+                { text: Scratch.translate("Indices"), value: "index" },
               ]},
               materialType: { items: [
                 {text: Scratch.translate("Mesh Basic"), value: "MeshBasicMaterial"},
@@ -1884,7 +1885,6 @@
           if (!obj) {console.warn(`No object named ${args.OBJECT}`); return;}
 
           let values = (args.VALUE);
-          console.log(args)
           args.TRANSFORM == "rotation" ? values = values.map(a => THREE.MathUtils.degToRad(a)) : null;
           dummyVector3.fromArray(values);
 
@@ -1934,14 +1934,12 @@
         }
 
         operate2Vector(args) {
-          console.log(args)
           const v1 = dummyVector3.fromArray((args.V1));
           let v2 = (args.V2);
           if (args.OPERATION == "applyEuler") v2 = dummyEuler.fromArray(v2);
           else typeof(v2) == "number" ? null : v2 = dummyVector3.clone().fromArray(v2);
           let r = v1[args.OPERATION](v2);
           typeof(r) == "object" ? r = r.toArray() : null;
-          console.log(r)
           return (r);
         }
 
@@ -2128,9 +2126,13 @@
           const geometry = assets.geometries.get(args.NAME);
           if (!geometry) {console.warn(`No geometry named ${args.NAME}`); return;}
 
-          let data, dataLength;
-          data = args.DATA.split(","); if (!data) return;
+          let dataLength;
 
+          if (args.PROPERTY == "index") {
+            geometry.setIndex(args.DATA);
+            geometry.index.needsUpdate = true;
+            return;
+          }
           switch (args.PROPERTY) {
             case "uv":
               dataLength = 2;
@@ -2138,7 +2140,7 @@
             default:
               dataLength = 3;
           }
-          geometry.setAttribute(args.PROPERTY, new THREE.BufferAttribute(new Float32Array(data), dataLength));
+          geometry.setAttribute(args.PROPERTY, new THREE.BufferAttribute(new Float32Array(args.DATA), dataLength));
 
           if (args.PROPERTY == "position") geometry.computeVertexNormals();
         }
@@ -2146,17 +2148,9 @@
           const geometry = assets.geometries.get(args.NAME);
           if (!geometry) {console.warn(`No geometry named ${args.NAME}`); return;}
 
-          let a = geometry.getAttribute(args.PROPERTY);
+          let a = args.PROPERTY == "index" ? geometry.index :  geometry.getAttribute(args.PROPERTY);
           if (a) a=a.array; else return null;
-          /* for custom output [0,0,0] [0,0,1] [1,0,1]
-          const result = [];
-          for (let i = 0; i < a.length; i += 3) {
-              result.push([a[i],a[i+1],a[i+2]]);
-          }
-
-          return (result).replaceAll("],", "] ").slice(1,-1);
-          */
-         return (Object.values(a));
+          return (Object.values(a));
         }
 
         createMaterial(args) {
@@ -2455,12 +2449,13 @@
           if (args.PROPERTY == "matrix") {
             const m = dummyMatrix4.fromArray((args.MATRIX));
             i.setMatrixAt(args.INDEX-1, m);
-            i.instanceMatrix.needsUpdate = true;
+            i.instanceMatrix.needsUpdate = true; //does this send smth each time it is called? or is it processed when .render is called? so doing multiple times each frame doesnt affect??
           } else {
             i.setColorAt(args.INDEX-1, new THREE.Color(args.MATRIX));
             i.instanceColor.needsUpdate = true;
           }
         }
+
        // Thanks to @.warnt. for this setInstance suggestion upgrade code!
        setInstance2(args, util) {
           const i = assets.objects.get(args.NAME);
@@ -2469,7 +2464,6 @@
           let list = util.target.lookupVariableByNameAndType( args.LIST, "list" );
            if (!list) return;
            list = list.value;
-           console.log(list)
 
             i.instanceMatrix.array.set( list );
             i.instanceMatrix.needsUpdate = true;
@@ -2507,7 +2501,30 @@
           return (v3); 
         }
 
-doMatrix(args) {
+        doMatrix(args) {
+          const p = args.P;
+          const r = args.R.map(a => THREE.MathUtils.degToRad(a));
+          const s = args.S;
+
+          /*dummyObject.position.fromArray(p);
+          dummyObject.rotation.fromArray(r);
+          dummyObject.scale.fromArray(s);
+
+          dummyObject.updateMatrix();
+
+          return dummyObject.matrix.elements;*/ //demo at 16 fps - 10000 objects
+
+          dummyMatrix4.compose(
+            dummyVector3.fromArray(p),
+            dummyQuaternion.setFromEuler(dummyEuler.fromArray(r)),
+            dummyVector3.clone().fromArray(s),
+          );
+
+          return dummyMatrix4.elements; //demo at 17 fps - 10000 objects
+          //without the block it runs at 21 fps! not just this block then...
+        }
+/*
+doMatrix(args) { //not perfect!
     const p = args.P;
     const r = args.R.map(a => THREE.MathUtils.degToRad(a));
     const s = args.S;
@@ -2540,7 +2557,7 @@ doMatrix(args) {
 
     return (matrixArray);
 }
-
+*/
         async loadFont() {
           //get ttf file
           const file = await new Promise((resolve) => {
@@ -2820,7 +2837,6 @@ SOFTWARE.
           camera.updateProjectionMatrix();
 
           if (!assets.textures.get(args.TEXTURE)) {
-            //rT.texture.flipY = false; doesnt work!
 
             rT.texture.wrapT = THREE.RepeatWrapping;
             rT.texture.repeat.y = -1;
