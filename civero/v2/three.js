@@ -38,7 +38,7 @@
   const {Octree} = await import("https://esm.sh/three@0.182.0/addons/math/Octree.js");
   let opentype;
 
-  let three, loopId, clock, defaultGeo, defaultMat, storedFog, storedRaycast, dummyVector3, dummyEuler, dummyQuaternion, dummyMatrix4, dummyObject,
+  let three, loopId, clock, defaultGeo, defaultMat, storedFog, storedRaycast, dummyVector3, dummyEuler, dummyQuaternion, dummyMatrix4, dummyObject, dummyVector2,
   scene, camera;
 
   let assets = {
@@ -190,6 +190,7 @@
     clock = new THREE.Clock();
 
     dummyVector3 = new THREE.Vector3();
+    dummyVector2 = new THREE.Vector2();
     dummyEuler = new THREE.Euler();
     dummyQuaternion = new THREE.Quaternion();
     dummyMatrix4 = new THREE.Matrix4();
@@ -515,27 +516,36 @@
               {
                 opcode: "setInstance",
                 blockType: Scratch.BlockType.COMMAND,
-                text: "set instanced mesh [NAME] item [INDEX] [PROPERTY] to [MATRIX]",
+                text: "set instanced mesh [NAME] item [INDEX] matrix to [MATRIX]",
                 color1: "#5FAD56",
                 arguments: {
-                  NAME: { type: "string", defaultValue: "grass" },
+                  NAME: { type: "string", defaultValue: "forest" },
                   INDEX: { type: "number", defaultValue: 1 },
-                  PROPERTY: { type: "string", menu: "instanceItems"},
-                  MATRIX: { type: "Array", defaultValue: "1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1"},
+                  MATRIX: { type: "string", defaultValue: "[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]" },
                 },
               },
               {
+                opcode: "setInstanceC",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "set instanced mesh [NAME] item [INDEX] color to [COLOR]",
+                color1: "#5FAD56",
+                arguments: {
+                  NAME: { type: "string", defaultValue: "forest" },
+                  INDEX: { type: "number", defaultValue: 1 },
+                  COLOR: { type: Scratch.ArgumentType.COLOR },
+                },
+              },
+              /*{
                 opcode: "setInstance2",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "set instanced mesh [NAME] matrix to [LIST]",
                 color1: "#5FAD56",
                 arguments: {
-                  NAME: { type: "string", defaultValue: "grass" },
+                  NAME: { type: "string", defaultValue: "forest" },
                   INDEX: { type: "number", defaultValue: 1 },
-                  PROPERTY: { type: "string", menu: "instanceItems"},
-                  LIST: { type: "Array", menu: "lists" },
+                  LIST: { type: "Array" },
                 },
-              },
+              },*/
               {
                 opcode: "getInstance",
                 blockType: Scratch.BlockType.ARRAY,
@@ -954,7 +964,18 @@
                 arguments: {
                   NAME: { type: "string", defaultValue: "sky"},
                   PROPERTY: { type: "string", menu: "textureProperties"},
-                  VALUE: { type: "string", defaultValue: "1,1"},
+                  VALUE: { type: "number"},
+                }
+              },
+              {
+                opcode: "setTextureA",
+                blockType: "command",
+                text: "set texture [NAME] [PROPERTY] to [VALUE]",
+                color1: "#694D7C",
+                arguments: {
+                  NAME: { type: "string", defaultValue: "sky"},
+                  PROPERTY: { type: "string", menu: "texturePropertiesA"},
+                  VALUE: { type: "Array"},
                 }
               },
               {
@@ -986,7 +1007,7 @@
                 color1: "#694D7C",
                 arguments: {
                   NAME: { type: "string", defaultValue: "sky"},
-                  VALUE: { type: "string", menu: "textureMapping"},
+                  VALUE: { type: "string", menu: "textureMapping"}, //idk if it will work menus are strange!
                 }
               },
 
@@ -1031,6 +1052,26 @@
                 color1: "#5FAD56",
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "camera" },
+                }
+              },
+              
+              {
+                opcode: "renderCubeCamera",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "render scene with cube camera [NAME]",
+                color1: "#694D7C",
+                arguments: {
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "cube camera" },
+                }
+              },
+              {
+                opcode: "getCubeCamera",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "create cube camera [NAME] texture as [TEXTURE]",
+                color1: "#694D7C",
+                arguments: {
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "cube camera" },
+                  TEXTURE: { type: Scratch.ArgumentType.STRING, defaultValue: "enviroment"},
                 }
               },
 
@@ -1213,8 +1254,8 @@
                 blockType: Scratch.BlockType.COMMAND,
                 text: "raycast from [V] in direction [D] [ORDER]",
                 arguments: {
-                  V: { type: Scratch.ArgumentType.STRING, defaultValue: "0,0,0"},
-                  D: { type: Scratch.ArgumentType.STRING, defaultValue: "0,0,0"},
+                  V: { type: Scratch.ArgumentType.ARRAY},
+                  D: { type: Scratch.ArgumentType.ARRAY},
                   ORDER: { type: Scratch.ArgumentType.STRING, menu: "XYZorder"},
                 }
               },
@@ -1223,7 +1264,7 @@
                 blockType: Scratch.BlockType.COMMAND,
                 text: "raycast from camera, mouse position [XY]",
                 arguments: {
-                  XY: { type: Scratch.ArgumentType.NUMBER, defaultValue: "0,0"},
+                  XY: { type: Scratch.ArgumentType.ARRAY},
                 }
               },
               {
@@ -1280,13 +1321,6 @@
                   MODE: { type: Scratch.ArgumentType.STRING, menu: "boolean"},
                 }
               },
-              
-              "---",
-
-              {blockType: "label",
-              text: Scratch.translate(`Physics, VR, Sky & Water, Postprocesing, +Addons (separate future extensions)`)},
-
-              "---",
             ],
             menus: {
               
@@ -1311,15 +1345,15 @@
               ]},
               vector2Operations: { items: [
                 { text: Scratch.translate("+"), value: "add" },
-                { text: Scratch.translate("+ Scalar"), value: "addScalar" },
+                /*{ text: Scratch.translate("+ Scalar"), value: "addScalar" },*/ //now that it requires an array, these should be moved into a separate block!
                 { text: Scratch.translate("-"), value: "sub" },
-                { text: Scratch.translate("- Scalar"), value: "subScalar" },
+                /*{ text: Scratch.translate("- Scalar"), value: "subScalar" },*/
                 { text: Scratch.translate("*"), value: "multiply" },
-                { text: Scratch.translate("* Scalar"), value: "multiplyScalar" },
+                /*{ text: Scratch.translate("* Scalar"), value: "multiplyScalar" },*/
                 { text: Scratch.translate("/"), value: "divide" },
-                { text: Scratch.translate("/ Scalar"), value: "divideScalar" },
+                /*{ text: Scratch.translate("/ Scalar"), value: "divideScalar" },*/
                 { text: Scratch.translate("="), value: "equals" },
-                { text: Scratch.translate("Distance To"), value: "distanceTo" },
+                { text: Scratch.translate("Distance To"), value: "distanceTo" }, //the block returns an array, these return numbers, so... separate block...
                 { text: Scratch.translate("Distance To Squared"), value: "distanceToSquared" },
                 { text: Scratch.translate("Manhattan Distance To"), value: "manhattanDistanceTo" },
                 { text: Scratch.translate("Angle To"), value: "angleTo" },
@@ -1379,7 +1413,7 @@
 
                   {text: Scratch.translate("Perspective Camera"), value: "PerspectiveCamera"},
                   {text: Scratch.translate("Orthographic Camera"), value: "OrthographicCamera"},
-                  //{text: Scratch.translate("Cube Camera"), value: "CubeCamera"},
+                  {text: Scratch.translate("Cube Camera"), value: "CubeCamera"},
                 ]
               },
               meshProperties: { items: [
@@ -1513,12 +1547,14 @@
                 //{ text: Scratch.translate("Custom"), value: "5" }
               ]},
               textureProperties: { items: [
-                { text: Scratch.translate("Repeat (V2)"), value: "repeat" },
-                { text: Scratch.translate("Center (V2)"), value: "center" },
-                { text: Scratch.translate("Offset (V2)"), value: "offset" },
-                { text: Scratch.translate("Anisotropy (Number)"), value: "anisotropy" },
-                { text: Scratch.translate("Rotation (Number)"), value: "rotation" },
+                { text: Scratch.translate("Anisotropy"), value: "anisotropy" },
+                { text: Scratch.translate("Rotation"), value: "rotation" },
                 { text: Scratch.translate("Premultiply Alpha (Boolean)"), value: "premultiplyAlpha" },
+              ]},
+              texturePropertiesA: { items: [
+                { text: Scratch.translate("Repeat"), value: "repeat" },
+                { text: Scratch.translate("Center"), value: "center" },
+                { text: Scratch.translate("Offset"), value: "offset" },
               ]},
               textureWarp: { items: [
                 { text: Scratch.translate("Repeat Wrapping"), value: "1000" },
@@ -1621,6 +1657,7 @@
               instanceItems: { items: [
                 { text: Scratch.translate("matrix"), value: "matrix" },
                 { text: Scratch.translate("color"), value: "color" },
+                { text: Scratch.translate("count"), value: "count" },
               ]},
               reset: {items: [
                 {text: Scratch.translate("everything"), value: "everything"},
@@ -2010,6 +2047,10 @@
               obj.left = w / -50;
               obj.updateProjectionMatrix();
               break;
+            case "CubeCamera":
+              const cubeRenderTarget = new THREE.WebGLCubeRenderTarget( 128 );
+              obj.renderTarget = cubeRenderTarget;
+              break;
             case "Mesh":
               obj.material = defaultMat;
               obj.geometry = defaultGeo;
@@ -2089,8 +2130,8 @@
           const obj = assets.objects.get(args.NAME);
           if (!obj) {console.warn(`No object named ${args.NAME}`); return;}
 
-          obj.traverse(o=>{o[args.PROPERTY] = (args.DATA);});
-          obj[args.PROPERTY] = (args.DATA);
+          obj.traverse(o=>{o[args.PROPERTY] = cast.toBoolean(args.DATA);});
+          obj[args.PROPERTY] = cast.toBoolean(args.DATA);
         }
         getObjectBool(args) {
           const obj = assets.objects.get(args.NAME);
@@ -2254,17 +2295,18 @@
             case "repeat":
             case "center":
             case "offset":
-              r = new THREE.Vector2().fromArray(r);
+              texture[args.PROPERTY].fromArray(r);
               break;
+            default: texture[args.PROPERTY] = r;
           }
-          texture[args.PROPERTY] = r;
           texture.needsUpdate = true;
         }
+        setTextureA(args) { this.setTexture(args); }
         setTextureMapping(args) {
           const texture = assets.textures.get(args.NAME);
           if (!texture) {console.warn(`No texture named ${args.NAME}`); return;}
 
-          texture.mapping = (args.VALUE);
+          texture.mapping = cast.toNumber(args.VALUE);
           texture.needsUpdate = true;
         }
 
@@ -2282,6 +2324,22 @@
           if (!cam) {console.warn(`No camera named ${args.NAME}`); return;}
 
           return (cam[args.PROPERTY]);
+        }
+        renderCubeCamera(args) {
+          const cam = assets.objects.get(args.NAME);
+          if (!cam || cam.type !== "CubeCamera") {console.warn(`No cube camera named ${args.NAME}`); return;}
+
+          cam.update( three.renderer, scene );
+        }
+        getCubeCamera(args) {
+          const cam = assets.objects.get(args.NAME);
+          if (!cam || cam.type !== "CubeCamera") {console.warn(`No cube camera named ${args.NAME}`); return;}
+          if (assets.textures.get(args.TEXTURE)) {console.warn(`A texture named ${args.TEXTURE} already exists!`); return;}
+
+          const texture = cam.renderTarget.texture;
+          assets.textures.set(args.TEXTURE, texture);
+          console.log(cam);
+
         }
 
         setLight(args) {
@@ -2379,7 +2437,6 @@
 
           const response = await fetch(url);
           const file = await response.arrayBuffer();
-          console.log(url, response, file);
 
           const group = new THREE.Group();
           group.name = args.NAME;
@@ -2408,7 +2465,6 @@
 
           function add(obj) {
             const model = obj.scene || obj;
-            console.log(obj);
             group.add(model);
             group.traverse(o=>{o.castShadow = true; o.receiveShadow = true;});
             //material customization support?
@@ -2446,33 +2502,32 @@
         setInstance(args) {
           const i = assets.objects.get(args.NAME);
           if (!i) {console.warn(`No instance named ${args.NAME}`); return;}
-          if (args.PROPERTY == "matrix") {
-            const m = dummyMatrix4.fromArray((args.MATRIX));
+            const m = dummyMatrix4.fromArray(args.MATRIX);
             i.setMatrixAt(args.INDEX-1, m);
-            i.instanceMatrix.needsUpdate = true; //does this send smth each time it is called? or is it processed when .render is called? so doing multiple times each frame doesnt affect??
-          } else {
-            i.setColorAt(args.INDEX-1, new THREE.Color(args.MATRIX));
+            i.instanceMatrix.needsUpdate = true;
+        }
+        setInstanceC(args) {
+          const i = assets.objects.get(args.NAME);
+          if (!i) {console.warn(`No instance named ${args.NAME}`); return;}
+            i.setColorAt(args.INDEX-1, new THREE.Color(args.COLOR));
             i.instanceColor.needsUpdate = true;
-          }
         }
 
-       // Thanks to @.warnt. for this setInstance suggestion upgrade code!
+       /* // Thanks to @.warnt. for this setInstance suggestion upgrade code!
        setInstance2(args, util) {
           const i = assets.objects.get(args.NAME);
           if (!i) {console.warn(`No instance named ${args.NAME}`); return;}
 
-          let list = util.target.lookupVariableByNameAndType( args.LIST, "list" );
-           if (!list) return;
-           list = list.value;
-
-            i.instanceMatrix.array.set( list );
+            i.instanceMatrix.array.set( args.LIST );
             i.instanceMatrix.needsUpdate = true;
-        }
+        }*/
        
         getInstance(args) {
           const i = assets.objects.get(args.NAME);
           if (!i) {console.warn(`No instance named ${args.NAME}`); return;}
-          if (args.PROPERTY == "matrix") {
+          if (args.PROPERTY == "count") {
+            return i.count;
+          } else if (args.PROPERTY == "matrix") {
             i.getMatrixAt(args.INDEX-1, dummyMatrix4);
             return (dummyMatrix4.elements);
           } else {
@@ -2792,7 +2847,7 @@ SOFTWARE.
           storedRaycast.set(v3, d3);
         }
         raycastCamera(args) {
-          const v2 = new THREE.Vector2().fromArray((args.XY));
+          const v2 = dummyVector2.clone().fromArray((args.XY));
           storedRaycast = new THREE.Raycaster();
           storedRaycast.setFromCamera(v2, camera );
         }
