@@ -1,6 +1,6 @@
 // Name: ThreeJS
 // ID: turboThree
-// Description: Blocks for creating and manipulating 3D objects using the Three.js library. (insert better description here).
+// Description: Blocks for creating and manipulating 3D scenes, objects, audio, materials, geometries and more using the Three.js library and addons.
 // By: Civero <https://scratch.mit.edu/users/Civero/>
 // By: -MasterMath- <https://scratch.mit.edu/users/-MasterMath-/>
 // By: Drago-Cuven <https://scratch.mit.edu/users/DragoCuven/>
@@ -19,6 +19,7 @@
   }
 
   const vm = Scratch.vm;
+  const cast = Scratch.Cast;
   const renderer = vm.renderer;
   const runtime = vm.runtime;
 
@@ -31,18 +32,21 @@
   const {TextGeometry} = await import ("https://esm.sh/three@0.182.0/addons/geometries/TextGeometry.js");
   const {OrbitControls} = await import("https://esm.sh/three@0.182.0/examples/jsm/controls/OrbitControls.js");
   const {GLTFLoader} = await import("https://esm.sh/three@0.182.0/addons/loaders/GLTFLoader.js");
+  const {OBJLoader} = await import("https://esm.sh/three@0.182.0/addons/loaders/OBJLoader.js");
+  const {FBXLoader} = await import("https://esm.sh/three@0.182.0/addons/loaders/FBXLoader.js");
   const {FontLoader} = await import ("https://esm.sh/three@0.182.0/addons/loaders/FontLoader.js");
+  const {Octree} = await import("https://esm.sh/three@0.182.0/addons/math/Octree.js");
   let opentype;
 
-  let three, loopId, clock, defaultGeo, defaultMat, storedFog, storedRaycast;
-  let rawBuffer, gpuView, renderData;
-  let scene, camera;
+  let three, loopId, clock, defaultGeo, defaultMat, storedFog, storedRaycast, dummyVector3, dummyEuler, dummyQuaternion, dummyMatrix4, dummyObject,
+  scene, camera;
 
   let assets = {
     objects: new Map(),
     geometries: new Map(),
     materials: new Map(),
     textures: new Map(),
+    renderTargets: new Map(),
     addons: new Map(),
     audios: new Map(),
   };
@@ -52,13 +56,17 @@
       preserveDrawingBuffer: true,
       antialias: true,
       alpha: true,
+      //logarithmicDepthBuffer: true,
     });
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = 1;
+    renderer.setClearColor( new THREE.Color("#fff"), 0.4 );
 
     const context = renderer.getContext();
     const TextureLoader = new THREE.TextureLoader();
-    const ModelLoader = new GLTFLoader();
+    const GLTFLoad = new GLTFLoader();
+    const OBJLoad = new OBJLoader();
+    const FBXLoad = new FBXLoader();
     const TextLoader = new FontLoader();
     const MathUtils = THREE.MathUtils;
     const AudioListener = new THREE.AudioListener();
@@ -67,7 +75,7 @@
     const {RectAreaLightUniformsLib} = await import("https://esm.sh/three@0.182.0/addons/lights/RectAreaLightUniformsLib.js");
     RectAreaLightUniformsLib.init();
 
-    return { renderer, context, TextureLoader, ModelLoader, MathUtils, TextLoader, AudioListener, AudioLoader };
+    return { renderer, context, TextureLoader, GLTFLoad, OBJLoad, FBXLoad, MathUtils, TextLoader, AudioListener, AudioLoader };
   };
 
   const setupSkin = () => {
@@ -82,8 +90,8 @@
 
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
         this.onNativeSizeChanged();
       }
@@ -94,22 +102,19 @@
 
       updateTexture(data) {
         const gl = this._renderer.gl;
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
         gl.bindTexture(gl.TEXTURE_2D, this._texture);
 
-        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-        gl.texSubImage2D(
+        gl.texImage2D(
           gl.TEXTURE_2D,
           0,
-          0,
-          0,
-          width,
-          height,
+          gl.RGBA,
           gl.RGBA,
           gl.UNSIGNED_BYTE,
-          data
+          three.renderer.domElement
         );
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-
+        this._silhouette.update(three.renderer.domElement);
         this.emitWasAltered();
       }
 
@@ -125,16 +130,6 @@
 
         three.renderer.setSize(width, height);
 
-        rawBuffer = new ArrayBuffer(
-          width * height * 4,
-        );
-        gpuView = new Uint8Array(rawBuffer);
-        renderData = new ImageData(
-          new Uint8ClampedArray(rawBuffer),
-          width,
-          height
-        );
-
         if (camera) {
           const [width, height] = this._nativeSize;
           if (camera.isPerspectiveCamera) {
@@ -148,21 +143,9 @@
           camera.updateProjectionMatrix();
         }
 
-        const gl = this._renderer.gl;
-        gl.bindTexture(gl.TEXTURE_2D, this._texture);
-        gl.texImage2D(
-          gl.TEXTURE_2D,
-          0,
-          gl.RGBA,
-          width,
-          height,
-          0,
-          gl.RGBA,
-          gl.UNSIGNED_BYTE,
-          null,
-        );
-
-        this.emitWasAltered();
+        this.updateTexture();
+        
+        dispatchEvent(new CustomEvent("ThreeJS-sizeChange", {size: this._size}));
       }
 
       onNativeSizeChanged() {
@@ -189,7 +172,9 @@
     const threeDrawableId = renderer.createDrawable("pen");
     renderer.updateDrawableSkinId(threeDrawableId, three.skin.id);
     renderer._allDrawables[threeDrawableId].customDrawableName = "Three Layer";
-    renderer._allDrawables[threeDrawableId].updateScale([100,-100]); //Y flip
+    if (renderer.markDrawableAsNoninteractive) {
+      renderer.markDrawableAsNoninteractive(threeDrawableId);
+    }
   };
 
   async function init() {
@@ -203,6 +188,12 @@
     camera.position.z = 2;
     assets.objects.set("camera", camera);
     clock = new THREE.Clock();
+
+    dummyVector3 = new THREE.Vector3();
+    dummyEuler = new THREE.Euler();
+    dummyQuaternion = new THREE.Quaternion();
+    dummyMatrix4 = new THREE.Matrix4();
+    dummyObject = new THREE.Object3D();
 
     defaultGeo = new THREE.BoxGeometry();
     defaultMat = new THREE.MeshMatcapMaterial();
@@ -229,6 +220,8 @@
       get clock() {
         return clock;
       },
+      stolenRender: false,
+      onRender: [],
     };
 
     runtime.on("STAGE_SIZE_CHANGED", () =>
@@ -253,20 +246,14 @@
     };
   }
 
-  const render = () => {
+  const render = (onlyUpdate) => {
     if (camera && scene) {
-      three.renderer.render(scene, camera);
+      if (!onlyUpdate) {
+        if (!_ThreeJS_.stolenRender) three.renderer.render(scene, camera);  
+        _ThreeJS_.onRender.forEach(async f => await f());
+      }
 
-      three.context.readPixels(
-        0,
-        0,
-        width,
-        height,
-        three.context.RGBA,
-        three.context.UNSIGNED_BYTE,
-        gpuView,
-      );
-      three.skin.updateTexture(renderData);
+      three.skin.updateTexture();
       renderer.dirty = true;
     }
 
@@ -308,6 +295,27 @@
     return {name: file[0].name, url: url};
   }
 
+const typedArray = new Float64Array(100);
+
+function convert(s, l=100) {
+  if (typeof s !== "string") return s;
+  if (s === "true") return true;
+  if (s === "false") return false;
+
+  if (s.startsWith("[") && s.endsWith("]")) {
+    typedArray.set(s.slice(1, -1).split(",").map(Number)); 
+    return typedArray.slice(0,l);
+  }
+  const n = Number(s);
+  return isNaN(n) ? s : n;
+}
+  function toString(a) {
+    if (ArrayBuffer.isView(a) || Array.isArray(a)) {
+      return `[${a.join(",")}]`;
+    }
+    return String(a);
+  }
+
   Promise.resolve(init())
     .then(() => {
 
@@ -320,7 +328,7 @@
             color2: "#30323D",
             color3: "#606060",
             menuIconURI: "data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHdpZHRoPSIyMTQiIGhlaWdodD0iMjE0IiB2aWV3Qm94PSIwLDAsMjE0LDIxNCI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTEzMywtNzMpIj48ZyBzdHJva2UtbWl0ZXJsaW1pdD0iMTAiPjxwYXRoIGQ9Ik0xMzMsMTgwYzAsLTU5LjA5NDQ3IDQ3LjkwNTUzLC0xMDcgMTA3LC0xMDdjNTkuMDk0NDcsMCAxMDcsNDcuOTA1NTMgMTA3LDEwN2MwLDU5LjA5NDQ3IC00Ny45MDU1MywxMDcgLTEwNywxMDdjLTU5LjA5NDQ3LDAgLTEwNywtNDcuOTA1NTMgLTEwNywtMTA3eiIgZmlsbD0iIzE5MTkxOSIgZmlsbC1ydWxlPSJub256ZXJvIiBzdHJva2U9IiM1Y2Q0OTgiIHN0cm9rZS13aWR0aD0iMCIgc3Ryb2tlLWxpbmVqb2luPSJtaXRlciIvPjxnIGZpbGw9Im5vbmUiIGZpbGwtcnVsZT0iZXZlbm9kZCIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0yMTEuNTk4LDI4MC40N2wtNDMuMjEzLC0xNzQuOTRsMTczLjIzLDQ5Ljg3NHoiLz48cGF0aCBkPSJNMjU0Ljk2OCwxMzAuNDcybDIxLjU5MSw4Ny40OTZsLTg2LjU2NywtMjQuOTQ1eiIvPjxwYXRoIGQ9Ik0yMzMuNDg4LDIwNC44OWwtMTAuNzI0LC00My40NjVsNDMuMDA4LDEyLjM0NnoiLz48cGF0aCBkPSJNMjEyLjAzNiwxMTguMDEzbDEwLjcyNCw0My40NjVsLTQzLjAwOCwtMTIuMzQ2eiIvPjxwYXRoIGQ9Ik0yOTguMDQ4LDE0Mi43OWwxMC43MjQsNDMuNDY1bC00My4wMDgsLTEyLjM0NnoiLz48cGF0aCBkPSJNMjMzLjQ5MywyMDQuOTJsMTAuNzI0LDQzLjQ2NWwtNDMuMDA4LC0xMi4zNDZ6Ii8+PC9nPjwvZz48L2c+PC9zdmc+",
-            docsURI: "https://civ3ro.github.io",
+            docsURI: "https://github.com/Brackets-Coder/ThreeJS-Extension",
             blocks: [
 
               {
@@ -392,7 +400,7 @@
               {
                 opcode: "rendererRender",
                 blockType: "command",
-                text: "render",
+                text: "render to stage",
               },
               
               {
@@ -533,6 +541,29 @@
                   INDEX: { type: "number", defaultValue: 1 },
                   PROPERTY: { type: "string", menu: "instanceItems"},
                   MATRIX: { type: "string", defaultValue: "[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]" },
+                },
+              },
+              {
+                opcode: "setInstance2",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "set instanced mesh [NAME] matrix to [LIST]",
+                color1: "#5FAD56",
+                arguments: {
+                  NAME: { type: "string", defaultValue: "forest" },
+                  INDEX: { type: "number", defaultValue: 1 },
+                  PROPERTY: { type: "string", menu: "instanceItems"},
+                  LIST: { type: "string", menu: "lists" },
+                },
+              },
+              {
+                opcode: "getInstance",
+                blockType: Scratch.BlockType.REPORTER,
+                text: "get instanced mesh [NAME] item [INDEX] [PROPERTY]",
+                color1: "#5FAD56",
+                arguments: {
+                  NAME: { type: "string", defaultValue: "forest" },
+                  INDEX: { type: "number", defaultValue: 1 },
+                  PROPERTY: { type: "string", menu: "instanceItems"},
                 },
               },
 
@@ -757,6 +788,18 @@
                 },
               },
               {
+                opcode: "createPlaneGeometry",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "create plane geometry named [NAME] segments: x [X] y [Y]",
+                color1: "#7c4d5e",
+                arguments: {
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "plane" },
+                  X: { type: Scratch.ArgumentType.NUMBER, defaultValue: 5 },
+                  Y: { type: Scratch.ArgumentType.NUMBER, defaultValue: 5 },
+                },
+              },
+              "---",
+              {
                 opcode: "setGeometry",
                 blockType: Scratch.BlockType.COMMAND,
                 text: "set geometry [NAME] [PROPERTY] to [DATA]",
@@ -874,16 +917,17 @@
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "red" },
                 },
               },
-              /*{
-                opcode: "setMaterialClipping",
+              //Blending modes!
+              {
+                opcode: "setMaterialBlending",
                 blockType: Scratch.BlockType.COMMAND,
-                text: "set material [NAME] clipping planes objects [DATA]",
+                text: "set material [NAME] to [DATA] blending",
                 color1: "#694D7C",
                 arguments: {
-                  DATA: { type: Scratch.ArgumentType.STRING, defaultValue: "[plane, plane2]"},
+                  DATA: { type: Scratch.ArgumentType.STRING, menu: "materialBlending"},
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "red" },
                 },
-              },*/
+              },
               {
                 opcode: "joinMaterial",
                 blockType: Scratch.BlockType.REPORTER,
@@ -973,7 +1017,7 @@
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "camera" },
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "cameraProperties"},
-                  VALUE: { type: Scratch.ArgumentType.STRING, defaultValue: "90"},
+                  VALUE: { type: "number", defaultValue: 90},
                 }
               },
               {
@@ -1063,22 +1107,7 @@
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "light" },
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "lightShadow"},
-                  VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: "10"},
-                }
-              },
-
-              "---",
-
-              {blockType: "label",
-              text: Scratch.translate("Sensing")},
-                //is there a way to subdivide the bounding box into multiple ones for more precicion?
-              {
-                opcode: "touching",
-                blockType: Scratch.BlockType.BOOLEAN,
-                text: "is [A] touching [B]?",
-                arguments: {
-                  A: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
-                  B: { type: Scratch.ArgumentType.STRING, defaultValue: "ground"}
+                  VALUE: { type: Scratch.ArgumentType.NUMBER, defaultValue: 10},
                 }
               },
 
@@ -1099,7 +1128,7 @@
               {
                 opcode: "addAudio",
                 blockType: Scratch.BlockType.COMMAND,
-                text: "add audio [NAME] to [PARENT]", 
+                text: "add audio [NAME] to object [PARENT]", 
                 color1: "#5FAD56",
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Whiz"},
@@ -1124,7 +1153,7 @@
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "Whiz"},
                   PROPERTY: { type: Scratch.ArgumentType.STRING, menu: "audioNumeral"},
-                  DATA: { type: Scratch.ArgumentType.NUMBER, defaultValue: "1" }
+                  DATA: { type: Scratch.ArgumentType.NUMBER, defaultValue: 1 }
                 }
               },
               {
@@ -1168,6 +1197,22 @@
               "---",
 
               {blockType: "label",
+              text: Scratch.translate("Sensing")},
+                //is there a way to subdivide the bounding box into multiple ones for more precicion?
+                //https://threejs.org/docs/#Octree
+              {
+                opcode: "touching",
+                blockType: Scratch.BlockType.BOOLEAN,
+                text: "is [A] touching [B]?",
+                arguments: {
+                  A: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
+                  B: { type: Scratch.ArgumentType.STRING, defaultValue: "ground"}
+                }
+              },
+
+              "---",
+
+              {blockType: "label",
               text: Scratch.translate("Raycast")},
 
               {
@@ -1202,6 +1247,30 @@
                 text: "is raycast touching [NAME]",
                 arguments: {
                   NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object"},
+                }
+              },
+
+              "---",
+
+              {blockType: "label",
+              text: Scratch.translate("Render Target")},
+
+              {
+                opcode: "renderTarget",
+                blockType: "command",
+                text: "create Render Target [TEXTURE] size [W][H]",
+                arguments: {
+                  TEXTURE: { type: Scratch.ArgumentType.STRING, defaultValue: "screen"},
+                  W: { type: Scratch.ArgumentType.NUMBER, defaultValue: 256},
+                  H: { type: Scratch.ArgumentType.NUMBER, defaultValue: 256},
+                }
+              },
+              {
+                opcode: "textureRender",
+                blockType: "command",
+                text: "render to Render Target [TEXTURE] texture",
+                arguments: {
+                  TEXTURE: { type: Scratch.ArgumentType.STRING, defaultValue: "screen"},
                 }
               },
 
@@ -1337,6 +1406,7 @@
               ]},
               geometryType: { items: [
                 { text: Scratch.translate("Empty"), value: "BufferGeometry" },
+                { text: Scratch.translate("Point"), value: "Point" },
                 { text: Scratch.translate("Cube"), value: "BoxGeometry" },
                 { text: Scratch.translate("Capsule"), value: "CapsuleGeometry" },
                 { text: Scratch.translate("Circle"), value: "CircleGeometry" },
@@ -1345,7 +1415,7 @@
                 { text: Scratch.translate("Dodecahedron"), value: "DodecahedronGeometry" },
                 { text: Scratch.translate("Icosahedron"), value: "IcosahedronGeometry" },
                 { text: Scratch.translate("Octahedron"), value: "OctahedronGeometry" },
-                { text: Scratch.translate("Plane"), value: "PlaneGeometry" },
+                //{ text: Scratch.translate("Plane"), value: "PlaneGeometry" },
                 { text: Scratch.translate("Sphere"), value: "SphereGeometry" },
                 { text: Scratch.translate("Tetrahedron"), value: "TetrahedronGeometry" },
                 { text: Scratch.translate("Torus"), value: "TorusGeometry" },
@@ -1354,7 +1424,8 @@
               geometryProperties: { items: [
                 { text: Scratch.translate("Vertex Points [XYZ]"), value: "position" },
                 { text: Scratch.translate("Texture Points [UV]"), value: "uv" },
-                { text: Scratch.translate("Face Points (Normals) [XYZ]"), value: "normal" }
+                { text: Scratch.translate("Face Points (Normals) [XYZ]"), value: "normal" },
+                { text: Scratch.translate("Vertex Colors [RGB]"), value: "color" },
               ]},
               materialType: { items: [
                 {text: Scratch.translate("Mesh Basic"), value: "MeshBasicMaterial"},
@@ -1384,13 +1455,19 @@
                 { text: Scratch.translate("Emissive Intensity"), value: "emissiveIntensity" },
                 { text: Scratch.translate("Reflectivity"), value: "reflectivity" },
                 { text: Scratch.translate("Shininess"), value: "shininess" },
-                { text: Scratch.translate("Transmission"), value: "transmission" },
-                { text: Scratch.translate("Thickness"), value: "thickness" },
+                { text: Scratch.translate("Physical: Transmission"), value: "transmission" },
+                { text: Scratch.translate("Physical: Thickness"), value: "thickness" },
                 { text: Scratch.translate("Refraction Ratio"), value: "refractionRatio" },
                 { text: Scratch.translate("Polygon Offset Factor"), value: "polygonOffsetFactor" },
                 { text: Scratch.translate("Polygon Offset Units"), value: "polygonOffsetUnits" },
                 { text: Scratch.translate("Wireframe width"), value: "wireframeLinewidth" },
-                { text: Scratch.translate("Points: Size"), value: "wireframeLinewidth" },
+                { text: Scratch.translate("Points: Size"), value: "size" },
+                { text: Scratch.translate("Physical: Anisotropy"), value: "anisotropy" },
+                { text: Scratch.translate("Physical: Anisotropy Rotation"), value: "anisotropyRotation" },
+                { text: Scratch.translate("Physical: Attenuation Distance"), value: "attenuationDistance" },
+                { text: Scratch.translate("Bump Scale"), value: "bumpScale" },
+                { text: Scratch.translate("Displacement Scale"), value: "displacementScale" },
+                { text: Scratch.translate("Ambient Occlusion Texture Intensity"), value: "aoMapIntensity" },
               ]},
               materialBooleanProperties: { items: [
                 { text: Scratch.translate("Visible"), value: "visible" },
@@ -1412,7 +1489,8 @@
                 { text: Scratch.translate("Color"), value: "color" },
                 { text: Scratch.translate("Emissive"), value: "emissive" },
                 { text: Scratch.translate("Specular"), value: "specular" },
-                { text: Scratch.translate("Sheen"), value: "sheen" }
+                { text: Scratch.translate("Sheen"), value: "sheen" },
+                { text: Scratch.translate("Physical: Attenuation"), value: "attenuationColor" },
               ]},
               materialMapProperties: { items: [
                 { text: Scratch.translate("Texture"), value: "map" },
@@ -1424,12 +1502,21 @@
                 { text: Scratch.translate("Environment Texture"), value: "envMap" },
                 { text: Scratch.translate("Ambient Occlusion Texture"), value: "aoMap" },
                 { text: Scratch.translate("Bump Texture"), value: "bumpMap" },
+                { text: Scratch.translate("Physical: Anisotropy Texture"), value: "anisotropyMap" },
                 { text: Scratch.translate("Displacement Texture"), value: "displacementMap" }
               ]},
               materialSides: { items: [
                 { text: Scratch.translate("Front"), value: "0" },
                 { text: Scratch.translate("Back"), value: "1" },
                 { text: Scratch.translate("Double"), value: "2" },
+              ]},
+              materialBlending: { items: [
+                { text: Scratch.translate("None"), value: "0" },
+                { text: Scratch.translate("Normal"), value: "1" },
+                { text: Scratch.translate("Additive"), value: "2" },
+                { text: Scratch.translate("Subtractive"), value: "3" },
+                { text: Scratch.translate("Multiply"), value: "4" },
+                //{ text: Scratch.translate("Custom"), value: "5" }
               ]},
               textureProperties: { items: [
                 { text: Scratch.translate("Repeat (V2)"), value: "repeat" },
@@ -1533,7 +1620,7 @@
                 { text: Scratch.translate("height"), value: "height" }         
               ]},
               lightShadow: {items: [
-                { text: Scratch.translate("Scale"), value: "scale" },
+                { text: Scratch.translate("Quality Scale"), value: "scale" },
                 { text: Scratch.translate("Blur"), value: "radius" },
                 { text: Scratch.translate("Instensity"), value: "intensity" }    
               ]},
@@ -1598,7 +1685,7 @@
                 const m = s.models;
                 if (!m) {s.models = {}; m = {};}
                 if (Object.keys(m).length == 0) return [["Load a model!"]];
-                return [Object.keys(m)];
+                return Object.keys(m).map(x=>[x]);
               }}, 
               loadedFonts: {items: () => {
                 const s = runtime.extensionStorage[extensionID] || null;
@@ -1606,11 +1693,23 @@
                 const m = s.fonts;
                 if (!m) {s.fonts = {}; m = {};}
                 if (Object.keys(m).length == 0) return [["Load a font!"]];
-                return [Object.keys(m)];
+                return Object.keys(m).map(x=>[x]);
               }},
+              lists:  {items: "listsMenu" },
             },
 
           };
+        }
+
+        listsMenu() {
+          const vars = Object.entries(vm.runtime.getTargetForStage()?.variables);
+          const et = Object.entries(Scratch.vm.editingTarget?.variables);
+
+          vars.push(...et);
+          const r = vars.filter(v=>v[1].type=="list").map(v=>v[1].name);
+
+          if (!r || r.length==0) return  ["Create a list!"];
+          return r;
         }
 
         openExtra() {open("https://threejs.org/docs");}
@@ -1635,6 +1734,9 @@
               assets.textures.forEach(
                 o => o.dispose()
               );
+              assets.renderTargets.forEach(
+                o => o.dispose()
+              );
               assets.addons.get("orbitControls") ? assets.addons.get("orbitControls").dispose() : null;
 
               assets.objects.clear();
@@ -1643,7 +1745,10 @@
               assets.textures.clear();
               assets.addons.clear();
               assets.audios.clear();
+              assets.renderTargets.clear();
               scene.clear();
+              scene.background = null;
+              scene.enviroment = null;
               scene.fog = null;
               scene.overrideMaterial = null;
               camera = new THREE.PerspectiveCamera(90, width/height);
@@ -1679,6 +1784,8 @@
           }
 
           three.renderer.clear();
+          render(true);
+          dispatchEvent(new CustomEvent("ThreeJS-Reset"));
         }
 
         stats(args) {
@@ -1696,23 +1803,23 @@
 
           if (args.PROPERTY == "autoRender") 
           {
-            if (JSON.parse(args.VALUE)) loopId = requestAnimationFrame(loop);
+            if (convert(args.VALUE)) loopId = requestAnimationFrame(loop);
             else {
               cancelAnimationFrame(loopId); 
               loopId = null;
             }
           } 
-          else current[keys[keys.length - 1]] = JSON.parse(args.VALUE);
+          else current[keys[keys.length - 1]] = convert(args.VALUE);
         }
         rendererClear(args) {
           three.renderer[args.B]();
-          render();
         }
         rendererRender(args) {
-          render(); //future physics, should change this to a step() method instead? or will it work like this?º
+          three.renderer.render(scene, camera); //no postprocessing then? idk...
+          render(true);
         }
         rendererShadow(args) {
-          three.renderer.shadowMap.type = JSON.parse(args.PROPERTY);
+          three.renderer.shadowMap.type = convert(args.PROPERTY);
         }
         getRenderer(args) {
           const keys = args.PROPERTY.split(".");
@@ -1755,7 +1862,7 @@
           let value = scene[args.PROPERTY];
           if (value) {
             if (value.isColor) return "#" + value.getHexString();
-            else return JSON.stringify(value);
+            else return toString(value);
           }
         }
         createFog(args) {
@@ -1779,17 +1886,17 @@
            assets[args.TYPE].delete(args.NAME);
         }
 
-        /*async*/ setTransform(args) {
+        setTransform(args) {
           const obj = assets.objects.get(args.OBJECT);
           if (!obj) {console.warn(`No object named ${args.OBJECT}`); return;}
 
-          let values = JSON.parse(args.VALUE);
+          let values = convert(args.VALUE);
           args.TRANSFORM == "rotation" ? values = values.map(a => THREE.MathUtils.degToRad(a)) : null;
-          let v3 = new THREE.Vector3().fromArray(values);
+          dummyVector3.fromArray(values);
 
           if (args.TRANSFORM == "rotation") {
-            /*await*/ obj.rotation.setFromVector3(v3);
-          } else /*await*/ obj[args.TRANSFORM].copy(v3);
+            obj.rotation.setFromVector3(dummyVector3);
+          } else obj[args.TRANSFORM].copy(dummyVector3);
         }
 
         getTransform(args) {
@@ -1799,20 +1906,20 @@
           let v3;
 
           if (args.TRANSFORM == "getWorldPosition" || args.TRANSFORM == "getWorldDirection") {
-            v3 = obj[args.TRANSFORM](new THREE.Vector3);
-            v3.toArray();
+            v3 = obj[args.TRANSFORM](dummyVector3);
+            v3 = [v3.x, v3.y, v3.z];
           } else v3 = obj[args.TRANSFORM].toArray();
           args.TRANSFORM == "rotation" || args.TRANSFORM == "getWorldDirection" ? v3 = v3.slice(0,3).map(r=> THREE.MathUtils.radToDeg(r)) : null;
 
-          return JSON.stringify(v3);
+          return toString(v3);
         }
 
-        /*async*/ transformTransform(args) {
+        transformTransform(args) {
           const obj = assets.objects.get(args.OBJECT);
           if (!obj) {console.warn(`No object named ${args.OBJECT}`); return;}
           let v = args.VALUE;
           args.TRANSFORM == "rotation" ? v = THREE.MathUtils.degToRad(v) : null;
-          /*await*/ args.ACTION == "set" ? obj[args.TRANSFORM][args.XYZ] = v : obj[args.TRANSFORM][args.XYZ] += v;
+          args.ACTION == "set" ? obj[args.TRANSFORM][args.XYZ] = v : obj[args.TRANSFORM][args.XYZ] += v;
         }
 
         setRotation(args) {
@@ -1822,66 +1929,66 @@
         }
 
         getAxis(args) {
-          return JSON.parse(args.V3)[{"x":0, "y":1, "z": 2}[args.XYZ]];
+          return convert(args.V3)[{"x":0, "y":1, "z": 2}[args.XYZ]];
         }
 
         operateVector(args) {
-          const v = new THREE.Vector3().fromArray(JSON.parse(args.V));
+          const v = dummyVector3.fromArray(convert(args.V));
           let r = v[args.OPERATION]();
           typeof(r) == "object" ? r = r.toArray() : null;
-          return JSON.stringify(r);
+          return toString(r);
         }
 
         operate2Vector(args) {
-          const v1 = new THREE.Vector3().fromArray(JSON.parse(args.V1));
-          let v2 = JSON.parse(args.V2);
-          if (args.OPERATION == "applyEuler") v2 = new THREE.Euler().fromArray(v2);
-          else typeof(v2) == "number" ? null : v2 = new THREE.Vector3().fromArray(v2);
+          const v1 = dummyVector3.fromArray(convert(args.V1));
+          let v2 = convert(args.V2);
+          if (args.OPERATION == "applyEuler") v2 = dummyEuler.fromArray(v2);
+          else typeof(v2) == "number" ? null : v2 = dummyVector3.clone().fromArray(v2);
           let r = v1[args.OPERATION](v2);
           typeof(r) == "object" ? r = r.toArray() : null;
-          return JSON.stringify(r);
+          return toString(r);
         }
 
         moveVector(args) {
-          let v3 = new THREE.Vector3().fromArray(JSON.parse(args.V));
+          let v3 = dummyVector3.fromArray(convert(args.V));
 
-          const [x,y,z] = JSON.parse(args.D);
-          const euler = new THREE.Euler(
+          const [x,y,z] = convert(args.D);
+          const euler = dummyEuler.set(
             THREE.MathUtils.degToRad(x), 
             THREE.MathUtils.degToRad(y), 
             THREE.MathUtils.degToRad(z), 
             args.ORDER
           );
-          const direction = new THREE.Vector3(0, 0, -1).applyEuler(euler).normalize();
+          const direction = dummyVector3.set(0, 0, -1).applyEuler(euler).normalize();
 
           v3.add(direction.multiplyScalar(args.STEPS));
-          return JSON.stringify(v3.toArray());
+          return toString(v3.toArray());
         }
 
         getVectorProjected(args) {
-          const v3 = new THREE.Vector3().fromArray(JSON.parse(args.V));
+          const v3 = dummyVector3.clone().fromArray(convert(args.V));
           v3.project(camera);
           const v2 = new THREE.Vector2(...three.skin.size.map(m=>m/2));
           const r = [v3.x*v2.x, v3.y*v2.y];
-          return JSON.stringify(r);
+          return toString(r);
         }
 
         directionToVector(args) {
-          const v1 = new THREE.Vector3().fromArray(JSON.parse(args.V1));
-          const v2 = new THREE.Vector3().fromArray(JSON.parse(args.V2));
+          const v1 = dummyVector3.clone().fromArray(convert(args.V1));
+          const v2 = dummyVector3.clone().fromArray(convert(args.V2));
 
           const direction = v1.sub(v2).normalize();
           const pitch = THREE.MathUtils.radToDeg( Math.atan2(-direction.y, Math.sqrt(direction.x*direction.x + direction.z*direction.z)) );
           const yaw = THREE.MathUtils.radToDeg( Math.atan2(direction.x, direction.z) );
 
-          return JSON.stringify([pitch,yaw,0]);
+          return toString([pitch,yaw,0]);
         }
 
         interpolateVectors(args) {
-          const v1 = new THREE.Vector3().fromArray(JSON.parse(args.V1));
-          const v2 = new THREE.Vector3().fromArray(JSON.parse(args.V2));
+          const v1 = dummyVector3.clone().fromArray(convert(args.V1));
+          const v2 = dummyVector3.clone().fromArray(convert(args.V2));
           const r = v1.lerp(v2, args.A/100);
-          return JSON.stringify(r.toArray());
+          return toString(r.toArray());
         }
 
         addObject(args) {
@@ -1930,6 +2037,13 @@
               obj.shadow.map.dispose();
               obj.shadow.map = null;
             }
+            if (obj.shadow.camera) {
+              obj.shadow.camera.top = 50;
+              obj.shadow.camera.bottom = -50;
+              obj.shadow.camera.right = 50;
+              obj.shadow.camera.left = -50;
+              obj.shadow.camera.updateProjectionMatrix();
+            }
           }
 
           obj.name = args.NAME;
@@ -1951,6 +2065,7 @@
           three.AudioListener.removeFromParent();
           selected.add(three.AudioListener);
           camera = selected;
+          dispatchEvent(new CustomEvent("ThreeJS-cameraChange"));
         }
 
         camera() {return [...assets.objects.entries()].find(([key, value]) => value === camera)?.[0];}
@@ -1972,22 +2087,22 @@
               material.forEach(m=>data.push(assets.materials.get(m) || defaultMat));}
               catch {data = assets.materials.get(material) || defaultMat;}
               obj.material = data;
+              obj.traverse(o=>o.material = data); //for models, not the best aproach but...
               break;
-            default: obj[args.PROPERTY] = JSON.parse(args.DATA);
           }
         }
         setObjectBool(args) {
           const obj = assets.objects.get(args.NAME);
           if (!obj) {console.warn(`No object named ${args.NAME}`); return;}
 
-          obj.traverse(o=>{o[args.PROPERTY] = JSON.parse(args.DATA);});
-          obj[args.PROPERTY] = JSON.parse(args.DATA);
+          obj.traverse(o=>{o[args.PROPERTY] = convert(args.DATA);});
+          obj[args.PROPERTY] = convert(args.DATA);
         }
         getObjectBool(args) {
           const obj = assets.objects.get(args.NAME);
           if (!obj) {console.warn(`No object named ${args.NAME}`); return;}
 
-          return JSON.stringify(obj[args.PROPERTY]);
+          return toString(obj[args.PROPERTY]);
         }
 
         createGeometry(args) {
@@ -1996,7 +2111,20 @@
             console.warn(`Already existing geometry named "${args.NAME}". Will replace!`);
             geometry.dispose();
           }
-          geometry = new THREE[args.TYPE]();
+          if (args.TYPE == "Point") {
+            geometry = new THREE.BufferGeometry();
+            geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array([0,0,0]), 3));
+          }
+          else geometry = new THREE[args.TYPE]();
+          assets.geometries.set(args.NAME, geometry);
+        }
+        createPlaneGeometry(args) {
+          let geometry = assets.geometries.get(args.NAME);
+          if (geometry) {
+            console.warn(`Already existing geometry named "${args.NAME}". Will replace!`);
+            geometry.dispose();
+          }
+          geometry = new THREE.PlaneGeometry(args.X, args.Y, args.X, args.Y);
           assets.geometries.set(args.NAME, geometry);
         }
 
@@ -2005,33 +2133,34 @@
           if (!geometry) {console.warn(`No geometry named ${args.NAME}`); return;}
 
           let data, dataLength;
-          data = JSON.parse(args.DATA); //.split(" ").map(p=>JSON.parse(p)).flat(); //from [0,0,0] [0,0,1] to 0,0,0,0,0,1
+          data = JSON.parse(args.DATA); //should avoid parse, but for geometries (updated very little in theory) it shouldnt be a problem right?
 
           switch (args.PROPERTY) {
-            case "position" || "normal":
-              dataLength = 3; //v3
-              break;
             case "uv":
               dataLength = 2;
               break;
+            default:
+              dataLength = 3;
           }
-
           geometry.setAttribute(args.PROPERTY, new THREE.BufferAttribute(new Float32Array(data), dataLength));
+
+          if (args.PROPERTY == "position") geometry.computeVertexNormals();
         }
         getGeometry(args) {
           const geometry = assets.geometries.get(args.NAME);
           if (!geometry) {console.warn(`No geometry named ${args.NAME}`); return;}
 
-          const a = geometry.getAttribute(args.PROPERTY).array;
+          let a = geometry.getAttribute(args.PROPERTY);
+          if (a) a=a.array; else return null;
           /* for custom output [0,0,0] [0,0,1] [1,0,1]
           const result = [];
           for (let i = 0; i < a.length; i += 3) {
               result.push([a[i],a[i+1],a[i+2]]);
           }
 
-          return JSON.stringify(result).replaceAll("],", "] ").slice(1,-1);
+          return toString(result).replaceAll("],", "] ").slice(1,-1);
           */
-         return JSON.stringify(Object.values(a));
+         return toString(Object.values(a));
         }
 
         createMaterial(args) {
@@ -2047,6 +2176,11 @@
         setMaterial(args) {
           const material = assets.materials.get(args.NAME);
           if (!material) {console.warn(`No material named ${args.NAME}`); return;}
+          
+          if (args.PROPERTY == "blending" && args.DATA > 2) {
+            console.warn(`Premultiplied alpha is now on for material ${args.NAME}. Needed for blending type ${args.DATA}`);
+            material.premultipliedAlpha = true;
+          }
           material[args.PROPERTY] = args.DATA;
           material.needsUpdate = true;
         }
@@ -2055,17 +2189,22 @@
           this.setMaterial(args);
         }
         setBoolMaterial(args) {
-          args.DATA = JSON.parse(args.DATA);
+          args.DATA = convert(args.DATA);
           this.setMaterial(args);
         }
         setMapMaterial(args) {
           args.DATA = assets.textures.get(args.DATA);
-          if (!args.DATA) {console.warn(`No texture named ${args.DATA}`); return;}
+          if (!args.DATA && args.DATA != null) {console.warn(`No texture named ${args.DATA}`); return;}
           this.setMaterial(args);
         }
         setMaterialSide(args) {
           args.PROPERTY = "side";
-          args.DATA = JSON.parse(args.DATA);
+          args.DATA = convert(args.DATA);
+          this.setMaterial(args);
+        }
+        setMaterialBlending(args) {
+          args.PROPERTY = "blending";
+          args.DATA = convert(args.DATA);
           this.setMaterial(args);
         }
         setMaterialClipping(args) {
@@ -2087,11 +2226,13 @@
           try { m2 = JSON.parse(m2);}
           catch {m2 = [m2];}
           m1.push(...m2);
-          return JSON.stringify(m1);
+          return toString(m1);
         }
 
-        async loadTexture(args) {
-          const img = vm.editingTarget.getCostumes()[(vm.editingTarget.getCostumeIndexByName(args.COSTUME))].asset.encodeDataURI();
+        async loadTexture(args, util) {
+          let img;
+          if (args.COSTUME.startsWith("data:image")) img = args.COSTUME;
+          else img = util.target.getCostumes()[(util.target.getCostumeIndexByName(args.COSTUME))].asset.encodeDataURI();
           const texture = await three.TextureLoader.loadAsync(img);
           texture.colorSpace = "srgb";
           assets.textures.set(args.NAME, texture);
@@ -2118,8 +2259,14 @@
           const texture = assets.textures.get(args.NAME);
           if (!texture) {console.warn(`No texture named ${args.NAME}`); return;}
 
-          let r = JSON.parse(args.VALUE);
-          typeof(r) == "object" ? r = new THREE.Vector2().fromArray(r) : null;
+          let r = convert(args.VALUE);
+          switch (args.PROPERTY) {
+            case "repeat":
+            case "center":
+            case "offset":
+              r = new THREE.Vector2().fromArray(r);
+              break;
+          }
           texture[args.PROPERTY] = r;
           texture.needsUpdate = true;
         }
@@ -2127,7 +2274,7 @@
           const texture = assets.textures.get(args.NAME);
           if (!texture) {console.warn(`No texture named ${args.NAME}`); return;}
 
-          texture.mapping = JSON.parse(args.VALUE);
+          texture.mapping = convert(args.VALUE);
           texture.needsUpdate = true;
         }
 
@@ -2136,7 +2283,7 @@
           if (!cam) {console.warn(`No camera named ${args.NAME}`); return;}
 
           if (cam.isCamera) {
-            cam[args.PROPERTY] = JSON.parse(args.VALUE);
+            cam[args.PROPERTY] = convert(args.VALUE);
             cam.updateProjectionMatrix();
           } else console.error(`${args.NAME} is not a camera!`);
         }
@@ -2144,7 +2291,7 @@
           const cam = assets.objects.get(args.NAME);
           if (!cam) {console.warn(`No camera named ${args.NAME}`); return;}
 
-          return JSON.stringify(cam[args.PROPERTY]);
+          return toString(cam[args.PROPERTY]);
         }
 
         setLight(args) {
@@ -2168,7 +2315,7 @@
             scene.add(r);
           } else {
             //texture? color?
-            args.PROPERTY == "map" ? r = assets.textures.get(args.VALUE) : typeof(r) == "string" && r.at(0) == "#" ? r = new THREE.Color(r) : r = JSON.parse(r);
+            args.PROPERTY == "map" ? r = assets.textures.get(args.VALUE) : typeof(r) == "string" && r.at(0) == "#" ? r = new THREE.Color(r) : r = convert(r);
             light[args.PROPERTY] = r;
           }
           } else console.error(`${args.NAME} is not a light!`);
@@ -2180,7 +2327,7 @@
           if (!light) {console.warn(`No light named ${args.NAME}`); return;}
 
           if (light.isSpotLight || light.isDirectionalLight ) {
-            light.target.position.set(...JSON.parse(args.VALUE));
+            light.target.position.set(...convert(args.VALUE));
             light.target.updateMatrixWorld();
           } else console.error(`${args.NAME} is not a light or it's an invalid type!`);
         }
@@ -2189,13 +2336,13 @@
           if (!light) {console.warn(`No light named ${args.NAME}`); return;}
 
           if (args.PROPERTY == "color") return "#" + light.color.getHexString();
-          return JSON.stringify(light[args.PROPERTY]);
+          return toString(light[args.PROPERTY]);
         }
         setLightShadow(args) {
           const light = assets.objects.get(args.NAME);
           if (!light || !light.shadow) {console.warn(`No light named ${args.NAME}, or it doesn't support shadows!`); return;}
 
-          const v = JSON.parse(args.VALUE);
+          const v = args.VALUE;
 
           if (args.PROPERTY == "scale") {
             light.shadow.mapSize.width = 2**v; 
@@ -2221,15 +2368,15 @@
 
         orbitControls(args) {
           const oc = assets.addons.get("orbitControls");
-          if (JSON.parse(args.MODE)) {
+          if (convert(args.MODE)) {
             oc ? oc.connect(renderer.canvas) : assets.addons.set("orbitControls", new OrbitControls(camera, renderer.canvas));
           } else { oc.disconnect(); oc.reset(); }
         }
 
         async loadModel() {
-          const file = await requestFile(".glb,gltf");
+          const file = await requestFile(".glb,.gltf,.obj,.fbx");
           runtime.extensionStorage[extensionID].models[file.name] = file.url;
-          vm.extensionManager.refreshBlocks();
+          console.log(`File ${file.name} has loaded and has been added!`);
         }
         async addModel(args) {
           if (args.NAME == "scene") {console.warn(`Don't name objects "scene"!`); return;}
@@ -2237,20 +2384,46 @@
           const url = runtime.extensionStorage[extensionID].models[args.FILE];
           if (!url) {console.warn(`No model named ${args.FILE}`); return;}
 
+          let ext = args.FILE.split(".");
+          ext = ext[ext.length-1];
+
           const response = await fetch(url);
           const file = await response.arrayBuffer();
-          console.log(response, file);
+          console.log(url, response, file);
 
           const group = new THREE.Group();
-          scene.add(group);
+          group.name = args.NAME;
+          if (assets.objects.get(args.NAME)) {
+            console.warn(`Object named ${args.NAME} already exists! Will replace!`);
+            assets.objects.get(args.NAME).removeFromParent();
+          }
           assets.objects.set(args.NAME, group);
+          scene.add(group);
 
-          three.ModelLoader.parse(file, "", (glb) => {
-            const model = glb.scene;
-            console.log(glb);
+          if (ext == "glb" || ext == "gltf") {
+
+            three.GLTFLoad.parse(file, "", (obj) => add(obj));
+
+          }
+          else if (ext == "obj") {
+
+            const data = new TextDecoder("utf-8").decode(file);
+            add(three.OBJLoad.parse(data));
+
+          } else if (ext == "fbx") {
+
+            add(three.FBXLoad.parse(file));
+
+          }
+
+          function add(obj) {
+            const model = obj.scene || obj;
+            console.log(obj);
             group.add(model);
             group.traverse(o=>{o.castShadow = true; o.receiveShadow = true;});
-          });
+            //material customization support?
+          }
+
         }
         removeModel(args) {
           confirm(`Are you sure you want to delete ${args.FILE}?`) ? delete runtime.extensionStorage[extensionID].models[args.FILE] : null;
@@ -2270,8 +2443,13 @@
 
           const i = new THREE.InstancedMesh(g,mat,args.COUNT);
           i.instanceMatrix.setUsage( THREE.DynamicDrawUsage ); //should add a block to change this?? is it any harm leaving it like this?
+          if (assets.objects.get(args.NAME)) {
+            console.warn(`Object named ${args.NAME} already exists! Will replace!`);
+            assets.objects.get(args.NAME).removeFromParent();
+          }
           assets.objects.set(args.NAME, i);
           i.name = args.NAME;
+          i.castShadow = true; i.receiveShadow = true;
           scene.add(i);
         }
 
@@ -2279,7 +2457,7 @@
           const i = assets.objects.get(args.NAME);
           if (!i) {console.warn(`No instance named ${args.NAME}`); return;}
           if (args.PROPERTY == "matrix") {
-            const m = new THREE.Matrix4().fromArray(JSON.parse(args.MATRIX));
+            const m = dummyMatrix4.fromArray(convert(args.MATRIX));
             i.setMatrixAt(args.INDEX-1, m);
             i.instanceMatrix.needsUpdate = true;
           } else {
@@ -2287,35 +2465,58 @@
             i.instanceColor.needsUpdate = true;
           }
         }
+       // Thanks to @.warnt. for this setInstance suggestion upgrade code!
+       setInstance2(args, util) {
+          const i = assets.objects.get(args.NAME);
+          if (!i) {console.warn(`No instance named ${args.NAME}`); return;}
+
+          let list = util.target.lookupVariableByNameAndType( args.LIST, "list" );
+           if (!list) return;
+           list = list.value;
+
+            i.instanceMatrix.array.set( list );
+            i.instanceMatrix.needsUpdate = true;
+        }
+       
+        getInstance(args) {
+          const i = assets.objects.get(args.NAME);
+          if (!i) {console.warn(`No instance named ${args.NAME}`); return;}
+          if (args.PROPERTY == "matrix") {
+            i.getMatrixAt(args.INDEX-1, dummyMatrix4);
+            return toString(dummyMatrix4.elements);
+          } else {
+            const color = new THREE.Color(); //should use a dummyColor???
+            i.getColorAt(args.INDEX-1, color);
+            return color.getHexString();
+          }
+        }
 
         getMatrixTransform(args) {
-          const m = new THREE.Matrix4().fromArray(JSON.parse(args.M));
+          const m = dummyObject.matrix.fromArray(convert(args.M));
 
-          const position = new THREE.Vector3();
-          const quaternion = new THREE.Quaternion();
-          const scale = new THREE.Vector3();
+          const position = dummyVector3;
+          const quaternion = dummyQuaternion;
+          const scale = dummyVector3.clone();
 
           m.decompose(position, quaternion, scale);
 
           const decomposed = {
-          "position": position,
-          "rotation": quaternion,
-          "scale": scale
+            "position": position,
+            "rotation": quaternion,
+            "scale": scale
           };
           let v3 = decomposed[args.TRANSFORM].toArray();
-          args.TRANSFORM == "rotation" ? v3 = new THREE.Euler().setFromQuaternion(quaternion).toArray().slice(0,3).map(r => THREE.MathUtils.radToDeg(r)) : null;
-          return JSON.stringify(v3); 
+          args.TRANSFORM == "rotation" ? v3 = dummyEuler.clone().setFromQuaternion(quaternion).toArray().slice(0,3).map(r => THREE.MathUtils.radToDeg(r)) : null;
+          return toString(v3); 
         }
 
         doMatrix(args) {
-          const m = new THREE.Matrix4();
-          const position = new THREE.Vector3().fromArray(JSON.parse(args.POSITION));
-          const quaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler().fromArray(JSON.parse(args.ROTATION).map(a => THREE.MathUtils.degToRad(a))));
-          const scale = new THREE.Vector3().fromArray(JSON.parse(args.SCALE));
+          dummyObject.position.set(...convert(args.POSITION, 3));
+          dummyObject.rotation.set(...convert(args.ROTATION, 3).map(a => THREE.MathUtils.degToRad(a)));
+          dummyObject.scale.set(...convert(args.SCALE, 3));
+          dummyObject.updateMatrix();
 
-          m.compose(position, quaternion, scale);
-
-          return JSON.stringify(m.elements);
+          return toString(dummyObject.matrix.elements);
         }
 
         async loadFont() {
@@ -2456,7 +2657,7 @@ SOFTWARE.
                                                   result.cssFontStyle = "normal";
                                               }
                                               
-                                              return JSON.stringify(result);
+                                              return toString(result);
           }
 
           runtime.extensionStorage[extensionID].fonts[file[0].name] = url;
@@ -2478,13 +2679,19 @@ SOFTWARE.
           delete runtime.extensionStorage[extensionID].fonts[args.FILE];
         }
 
-        async loadAudio(args) {
-          const sounds = vm.editingTarget.getSounds();
-          const file = sounds[sounds.findIndex(a=>a.name==args.FILE)].asset.data.buffer;
+        async loadAudio(args, util) {
+          let file, buffer;
+          if (args.FILE.startsWith("data:audio")) {
+            file = args.FILE;
+            buffer = await three.AudioLoader.loadAsync( file );
+          }
+          else {
+            const sounds = util.target.getSounds();
+            file = sounds[sounds.findIndex(a=>a.name==args.FILE)].asset.data.buffer;
 
-          const audioContext = THREE.AudioContext.getContext();
-          const buffer = await audioContext.decodeAudioData(file.slice(0));
-
+            const audioContext = THREE.AudioContext.getContext();
+            buffer = await audioContext.decodeAudioData(file.slice(0));
+          }
           assets.audios.set(args.NAME, buffer);
         }
 
@@ -2512,8 +2719,8 @@ SOFTWARE.
           const sound = assets.objects.get(args.NAME);
           if (!sound) {console.warn(`No sound named ${args.NAME}`); return;}
 
-          if (args.DATA == "offset") { sound.offset = JSON.parse(args.DATA); return;}
-          args.DATA ? sound[args.PROPERTY](JSON.parse(args.DATA)) : sound[args.PROPERTY]();
+          if (args.DATA == "offset") { sound.offset = args.DATA; return;}
+          args.DATA ? sound[args.PROPERTY](args.DATA) : sound[args.PROPERTY]();
         }
         doAudio(args) {this.setAudio(args);}
         setAudioBoolean(args) {this.setAudio(args);}
@@ -2528,7 +2735,7 @@ SOFTWARE.
           const sound = assets.objects.get(args.NAME);
           if (!sound) {console.warn(`No sound named ${args.NAME}`); return;}
 
-          return JSON.stringify(sound[args.PROPERTY]());}
+          return toString(sound[args.PROPERTY]());}
         stopAllAudios() {
           assets.objects.forEach(
             a => {if (a.type == "Audio") {a.setLoopEnd(0); a.stop();}}
@@ -2536,26 +2743,25 @@ SOFTWARE.
         }
 
         raycast(args) {
-          const v3 = new THREE.Vector3().fromArray(JSON.parse(args.V));
-          const d3 = new THREE.Vector3(0,0,-1);
-          const e = new THREE.Euler().fromArray(JSON.parse(args.D));
+          const v3 = dummyVector3.clone().fromArray(convert(args.V));
+          const d3 = dummyVector3.set(0,0,-1);
+          const e = dummyEuler.clone().fromArray(convert(args.D));
           e.order = args.ORDER;
           d3.applyEuler(e);
 
           storedRaycast = new THREE.Raycaster();
           storedRaycast.set(v3, d3);
-          console.log(storedRaycast)
         }
         raycastCamera(args) {
-          const v2 = new THREE.Vector2().fromArray(JSON.parse(args.XY));
+          const v2 = new THREE.Vector2().fromArray(convert(args.XY));
           storedRaycast = new THREE.Raycaster();
           storedRaycast.setFromCamera(v2, camera );
         }
         getRaycast(args) {
           const r = storedRaycast.intersectObject( scene );
-          if (args.PROPERTY == "object") return JSON.stringify(r.map(i => i[args.PROPERTY].name));
-          else if (args.PROPERTY == "point" || args.PROPERTY == "normal") return JSON.stringify(r.map(i => i[args.PROPERTY].toArray()));
-          else return JSON.stringify(r.map(i => i[args.PROPERTY]));
+          if (args.PROPERTY == "object") return toString(r.map(i => i[args.PROPERTY].name));
+          else if (args.PROPERTY == "point" || args.PROPERTY == "normal") return toString(r.map(i => i[args.PROPERTY].toArray()));
+          else return toString(r.map(i => i[args.PROPERTY]));
         }
         isRaycast(args) {
           const obj = assets.objects.get(args.NAME);
@@ -2563,6 +2769,43 @@ SOFTWARE.
 
           const r = storedRaycast.intersectObject( obj );
           return r.length ? true : false;
+        }
+
+        renderTarget(args) {
+          let rT = assets.renderTargets.get(args.TEXTURE);
+          if (rT) {console.warn(`A Render Target named ${args.TEXTURE} already exists. Will replace!`); rT.dispose();}
+            rT = new THREE.WebGLRenderTarget(args.W, args.H, {
+              colorSpace: "srgb",
+              anisotropy: 2,
+            });
+            assets.renderTargets.set(args.TEXTURE, rT);
+        }
+
+        textureRender(args) {
+          let rT = assets.renderTargets.get(args.TEXTURE);
+          if (!rT) {console.warn(`No Render Target named ${args.TEXTURE}`); return;}
+          if (assets.textures.get(args.TEXTURE) != rT.texture && assets.textures.get(args.TEXTURE)) {console.warn(`A texture named ${args.TEXTURE} already exists!`); return;}
+          
+          const aspect = camera.aspect;
+          camera.aspect = rT.width / rT.height;
+          camera.updateProjectionMatrix();
+
+          three.renderer.setRenderTarget(rT);
+          render(); 
+          three.renderer.setRenderTarget(null);
+          
+          camera.aspect = aspect;
+          camera.updateProjectionMatrix();
+
+          if (!assets.textures.get(args.TEXTURE)) {
+            //rT.texture.flipY = false; doesnt work!
+
+            rT.texture.wrapT = THREE.RepeatWrapping;
+            rT.texture.repeat.y = -1;
+            rT.texture.offset.y = 1;
+
+            assets.textures.set(args.TEXTURE,  rT.texture);
+          }
         }
       
       }
