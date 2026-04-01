@@ -39,7 +39,7 @@
   let opentype;
 
   let three, loopId, clock, defaultGeo, defaultMat, storedFog, storedRaycast, dummyVector3, dummyEuler, dummyQuaternion, dummyMatrix4, dummyObject, dummyVector2,
-  scene, camera;
+  scene, camera, octree, oldscene;
 
   let assets = {
     objects: new Map(),
@@ -183,11 +183,13 @@
 
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(90, width/height);
+    scene.add(camera);
     camera.name = "camera";
     camera.add(three.AudioListener);
     camera.position.z = 2;
     assets.objects.set("camera", camera);
     clock = new THREE.Clock();
+    octree = new Octree();
 
     dummyVector3 = new THREE.Vector3();
     dummyVector2 = new THREE.Vector2();
@@ -519,9 +521,9 @@
                 text: "set instanced mesh [NAME] item [INDEX] matrix to [MATRIX]",
                 color1: "#5FAD56",
                 arguments: {
-                  NAME: { type: "string", defaultValue: "forest" },
+                  NAME: { type: "string", defaultValue: "grass" },
                   INDEX: { type: "number", defaultValue: 1 },
-                  MATRIX: { type: "string", defaultValue: "[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]" },
+                  MATRIX: { type: Scratch.ArgumentType.ARRAY },
                 },
               },
               {
@@ -530,7 +532,7 @@
                 text: "set instanced mesh [NAME] item [INDEX] color to [COLOR]",
                 color1: "#5FAD56",
                 arguments: {
-                  NAME: { type: "string", defaultValue: "forest" },
+                  NAME: { type: "string", defaultValue: "grass" },
                   INDEX: { type: "number", defaultValue: 1 },
                   COLOR: { type: Scratch.ArgumentType.COLOR },
                 },
@@ -541,9 +543,9 @@
                 text: "set instanced mesh [NAME] matrix to [LIST]",
                 color1: "#5FAD56",
                 arguments: {
-                  NAME: { type: "string", defaultValue: "forest" },
+                  NAME: { type: "string", defaultValue: "grass" },
                   INDEX: { type: "number", defaultValue: 1 },
-                  LIST: { type: "Array" },
+                  LIST: { type: Scratch.ArgumentType.ARRAY },
                 },
               },*/
               {
@@ -570,7 +572,7 @@
                 arguments: {
                   TRANSFORM: { type: Scratch.ArgumentType.STRING, menu: "transformType" },
                   OBJECT: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
-                  VALUE: { type: "Array", defaultValue: "0,0,0"},
+                  VALUE: { type: Scratch.ArgumentType.ARRAY, defaultValue: "0,0,0"},
                 },
               },
               {
@@ -727,9 +729,9 @@
                 text: "create matrix from position [P] rotation [R] scale [S] ",
                 color1: "#5C80BC",
                 arguments: {
-                  P: { type: "Array"},
-                  R: { type: "Array"},
-                  S: { type: "Array"},
+                  P: { type: Scratch.ArgumentType.ARRAY},
+                  R: { type: Scratch.ArgumentType.ARRAY},
+                  S: { type: Scratch.ArgumentType.ARRAY},
                 },
               },
               {
@@ -975,7 +977,7 @@
                 arguments: {
                   NAME: { type: "string", defaultValue: "sky"},
                   PROPERTY: { type: "string", menu: "texturePropertiesA"},
-                  VALUE: { type: "Array"},
+                  VALUE: { type: Scratch.ArgumentType.ARRAY},
                 }
               },
               {
@@ -1241,6 +1243,15 @@
                 arguments: {
                   A: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
                   B: { type: Scratch.ArgumentType.STRING, defaultValue: "ground"}
+                }
+              },
+              {
+                opcode: "touchingAny",
+                blockType: Scratch.BlockType.BOOLEAN,
+                text: "is [A] as [TYPE] touching anything?",
+                arguments: {
+                  A: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
+                  TYPE: { type: Scratch.ArgumentType.STRING, menu: "octreeTypes"}
                 }
               },
 
@@ -1612,7 +1623,7 @@
                 { text: Scratch.translate("Background Intensity"), value: "backgroundIntensity" },
                 { text: Scratch.translate("Background Rotation"), value: "backgroundRotation" },
 
-                { text: Scratch.translate("Environment"), value: "environment" },
+                { text: Scratch.translate("Environment"), value: "  " },
                 { text: Scratch.translate("Environment Intensity"), value: "environmentIntensity" },
                 { text: Scratch.translate("Environment Rotation"), value: "environmentRotation" },
 
@@ -1703,6 +1714,11 @@
                 { text: Scratch.translate("Volume Drop Distance"), value: "getRefDistance" },
                 { text: Scratch.translate("Fade Factor"), value: "getRolloffFactor" },      
               ]},
+              octreeTypes: {items: [
+                { text: Scratch.translate("Box"), value: "boxIntersect" },
+                //{ text: Scratch.translate("Sphere"), value: "sphereIntersect" },
+                /*{ text: Scratch.translate("Capsule"), value: "capsuleIntersect" },*/ //need to install addon, and how do you get the capsule of an object?
+              ]},
               raycast: {items: [
                 { text: Scratch.translate("Distance"), value: "distance" },
                 { text: Scratch.translate("Object"), value: "object" },
@@ -1783,6 +1799,7 @@
               scene.fog = null;
               scene.overrideMaterial = null;
               camera = new THREE.PerspectiveCamera(90, width/height);
+              scene.add(camera);
               camera.add(three.AudioListener);
               camera.position.z = 2;
               assets.objects.set("camera", camera);
@@ -1834,13 +1851,13 @@
 
           if (args.PROPERTY == "autoRender") 
           {
-            if ((args.VALUE)) loopId = requestAnimationFrame(loop);
+            if (cast.toBoolean(args.VALUE)) loopId = requestAnimationFrame(loop);
             else {
               cancelAnimationFrame(loopId); 
               loopId = null;
             }
-          } 
-          else current[keys[keys.length - 1]] = (args.VALUE);
+          }
+          else current[keys[keys.length - 1]] = cast.toBoolean(args.VALUE);
         }
         rendererClear(args) {
           three.renderer[args.B]();
@@ -1850,7 +1867,7 @@
           render(true);
         }
         rendererShadow(args) {
-          three.renderer.shadowMap.type = (args.PROPERTY);
+          three.renderer.shadowMap.type = cast.toNumber(args.PROPERTY);
         }
         getRenderer(args) {
           const keys = args.PROPERTY.split(".");
@@ -1880,11 +1897,10 @@
             : scene.fog = null;
           }
           else {
-            try { value = JSON.parse(args.VALUE); }
-            catch {
-              if (args.VALUE.at(0) == "#") value = new THREE.Color(args.VALUE);
-              else value = assets.textures.get(args.VALUE); 
-            }
+              if (typeof args.VALUE == "string" && args.VALUE.at(0) == "#") value = new THREE.Color(args.VALUE);
+              else if (args.PROPERTY == "background" || args.PROPERTY == "environment") value = assets.textures.get(args.VALUE);
+              else value = cast.toNumber(args.VALUE);
+
             scene[args.PROPERTY] = value;
           }
           
@@ -1990,9 +2006,9 @@
             THREE.MathUtils.degToRad(z), 
             args.ORDER
           );
-          const direction = dummyVector3.set(0, 0, -1).applyEuler(euler).normalize();
+          const direction = dummyVector3.clone().set(0, 0, -1).applyEuler(euler).normalize();
 
-          v3.add(direction.multiplyScalar(args.STEPS));
+          v3.add(direction.multiplyScalar(cast.toNumber(args.STEPS)));
           return (v3.toArray());
         }
 
@@ -2220,7 +2236,7 @@
           this.setMaterial(args);
         }
         setBoolMaterial(args) {
-          args.DATA = (args.DATA);
+          args.DATA = cast.toBoolean(args.DATA);
           this.setMaterial(args);
         }
         setMapMaterial(args) {
@@ -2413,10 +2429,34 @@
 
           return a.intersectsBox(b);
         }
+        touchingAny(args) { //not good enough! too slow...
+          const oa = assets.objects.get(args.A);
+          if (!oa) {console.warn(`No object named ${args.A}`); return;}
+
+          let collider;
+
+          switch (args.TYPE) {
+            case "boxIntersect":
+              collider = new THREE.Box3().setFromObject( oa );
+              break;
+            case "sphereIntersect":
+              //neh
+              break;
+            case "capsuleIntersect":
+              //how
+              break;
+          }
+          
+          if (scene.toJSON() != oldscene) {
+            octree.fromGraphNode( scene );
+            oldscene = scene.toJSON();
+          }
+          return !!octree[args.TYPE](collider);
+        }
 
         orbitControls(args) {
           const oc = assets.addons.get("orbitControls");
-          if ((args.MODE)) {
+          if (cast.toBoolean(args.MODE)) {
             oc ? oc.connect(renderer.canvas) : assets.addons.set("orbitControls", new OrbitControls(camera, renderer.canvas));
           } else { oc.disconnect(); oc.reset(); }
         }
@@ -2445,7 +2485,10 @@
             assets.objects.get(args.NAME).removeFromParent();
           }
           assets.objects.set(args.NAME, group);
-          scene.add(group);
+
+          const parent = assets.objects.get(args.PARENT);
+          if (!parent) scene.add(group);
+          else parent.add(group);
 
           if (ext == "glb" || ext == "gltf") {
 
@@ -2817,7 +2860,10 @@ SOFTWARE.
           args.DATA ? sound[args.PROPERTY](args.DATA) : sound[args.PROPERTY]();
         }
         doAudio(args) {this.setAudio(args);}
-        setAudioBoolean(args) {this.setAudio(args);}
+        setAudioBoolean(args) {
+          args.DATA = cast.toBoolean(args.DATA);
+          this.setAudio(args);
+        }
 
         isAudio(args) {
           const sound = assets.objects.get(args.NAME);
