@@ -1623,7 +1623,7 @@
                 { text: Scratch.translate("Background Intensity"), value: "backgroundIntensity" },
                 { text: Scratch.translate("Background Rotation"), value: "backgroundRotation" },
 
-                { text: Scratch.translate("Environment"), value: "  " },
+                { text: Scratch.translate("Environment"), value: "environment" },
                 { text: Scratch.translate("Environment Intensity"), value: "environmentIntensity" },
                 { text: Scratch.translate("Environment Rotation"), value: "environmentRotation" },
 
