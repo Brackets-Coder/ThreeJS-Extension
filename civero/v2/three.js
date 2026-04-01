@@ -183,6 +183,7 @@
 
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(90, width/height);
+    scene.add(camera);
     camera.name = "camera";
     camera.add(three.AudioListener);
     camera.position.z = 2;
@@ -1772,6 +1773,7 @@ function convert(s, l=100) {
               scene.fog = null;
               scene.overrideMaterial = null;
               camera = new THREE.PerspectiveCamera(90, width/height);
+              scene.add(camera);
               camera.add(three.AudioListener);
               camera.position.z = 2;
               assets.objects.set("camera", camera);
@@ -1979,7 +1981,7 @@ function convert(s, l=100) {
             THREE.MathUtils.degToRad(z), 
             args.ORDER
           );
-          const direction = dummyVector3.set(0, 0, -1).applyEuler(euler).normalize();
+          const direction = dummyVector3.clone().set(0, 0, -1).applyEuler(euler).normalize();
 
           v3.add(direction.multiplyScalar(args.STEPS));
           return toString(v3.toArray());
@@ -2437,7 +2439,10 @@ function convert(s, l=100) {
             assets.objects.get(args.NAME).removeFromParent();
           }
           assets.objects.set(args.NAME, group);
-          scene.add(group);
+
+          const parent = assets.objects.get(args.PARENT);
+          if (!parent) scene.add(group);
+          else parent.add(group);
 
           if (ext == "glb" || ext == "gltf") {
 
