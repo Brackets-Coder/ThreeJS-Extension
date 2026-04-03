@@ -17,6 +17,11 @@
   if (!Scratch.extensions.unsandboxed) {
     throw new Error("Three.js must run unsandboxed");
   }
+  if (Scratch.vm.runtime.isPackaged) {
+    alert(`Uncheck the setting "Remove raw asset data after loading to save RAM" for package!`);
+    return;
+  }
+
 
   const vm = Scratch.vm;
   const cast = Scratch.Cast;
