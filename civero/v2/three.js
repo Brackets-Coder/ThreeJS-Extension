@@ -187,6 +187,7 @@
 
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(90, width/height);
+    scene.add(camera);
     camera.name = "camera";
     camera.add(three.AudioListener);
     camera.position.z = 2;
@@ -1045,6 +1046,26 @@ function convert(s, l=100) {
                 }
               },
 
+              {
+                opcode: "renderCubeCamera",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "render scene with cube camera [NAME]",
+                color1: "#694D7C",
+                arguments: {
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "cube camera" },
+                }
+              },
+              {
+                opcode: "getCubeCamera",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "create cube camera [NAME] texture as [TEXTURE]",
+                color1: "#694D7C",
+                arguments: {
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "cube camera" },
+                  TEXTURE: { type: Scratch.ArgumentType.STRING, defaultValue: "enviroment"},
+                }
+              },
+
               "---",
 
               {blockType: "label",
@@ -1756,6 +1777,7 @@ function convert(s, l=100) {
               scene.fog = null;
               scene.overrideMaterial = null;
               camera = new THREE.PerspectiveCamera(90, width/height);
+              scene.add(camera);
               camera.add(three.AudioListener);
               camera.position.z = 2;
               assets.objects.set("camera", camera);
@@ -1963,7 +1985,7 @@ function convert(s, l=100) {
             THREE.MathUtils.degToRad(z), 
             args.ORDER
           );
-          const direction = dummyVector3.set(0, 0, -1).applyEuler(euler).normalize();
+          const direction = dummyVector3.clone().set(0, 0, -1).applyEuler(euler).normalize();
 
           v3.add(direction.multiplyScalar(args.STEPS));
           return toString(v3.toArray());
@@ -2019,6 +2041,10 @@ function convert(s, l=100) {
               obj.right = w / 50;
               obj.left = w / -50;
               obj.updateProjectionMatrix();
+              break;
+            case "CubeCamera":
+              const cubeRenderTarget = new THREE.WebGLCubeRenderTarget( 128 );
+              obj.renderTarget = cubeRenderTarget;
               break;
             case "Mesh":
               obj.material = defaultMat;
@@ -2268,10 +2294,10 @@ function convert(s, l=100) {
             case "repeat":
             case "center":
             case "offset":
-              r = new THREE.Vector2().fromArray(r);
+              texture[args.PROPERTY].fromArray(r);
               break;
+            default: texture[args.PROPERTY] = r;
           }
-          texture[args.PROPERTY] = r;
           texture.needsUpdate = true;
         }
         setTextureMapping(args) {
@@ -2296,6 +2322,21 @@ function convert(s, l=100) {
           if (!cam) {console.warn(`No camera named ${args.NAME}`); return;}
 
           return toString(cam[args.PROPERTY]);
+        }
+        
+        renderCubeCamera(args) {
+          const cam = assets.objects.get(args.NAME);
+          if (!cam || cam.type !== "CubeCamera") {console.warn(`No cube camera named ${args.NAME}`); return;}
+
+          cam.update( three.renderer, scene );
+        }
+        getCubeCamera(args) {
+          const cam = assets.objects.get(args.NAME);
+          if (!cam || cam.type !== "CubeCamera") {console.warn(`No cube camera named ${args.NAME}`); return;}
+          if (assets.textures.get(args.TEXTURE)) {console.warn(`A texture named ${args.TEXTURE} already exists!`); return;}
+
+          const texture = cam.renderTarget.texture;
+          assets.textures.set(args.TEXTURE, texture);
         }
 
         setLight(args) {
@@ -2402,7 +2443,10 @@ function convert(s, l=100) {
             assets.objects.get(args.NAME).removeFromParent();
           }
           assets.objects.set(args.NAME, group);
-          scene.add(group);
+
+          const parent = assets.objects.get(args.PARENT);
+          if (!parent) scene.add(group);
+          else parent.add(group);
 
           if (ext == "glb" || ext == "gltf") {
 
