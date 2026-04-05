@@ -53,6 +53,7 @@
     renderTargets: new Map(),
     addons: new Map(),
     audios: new Map(),
+    animations: new Map(),
   };
 
   const setupThree = async () => {
@@ -252,10 +253,13 @@
   }
 
   const render = (onlyUpdate) => {
+    const delta = clock.getDelta();
+
     if (camera && scene) {
       if (!onlyUpdate) {
         if (!_ThreeJS_.stolenRender) three.renderer.render(scene, camera);  
         _ThreeJS_.onRender.forEach(async f => await f());
+        assets.animations.forEach(mixer=>mixer.update(delta));
       }
 
       three.skin.updateTexture();
@@ -272,8 +276,6 @@
 
   const loop = () => {
     loopId = requestAnimationFrame(loop);
-
-    const delta = clock.getDelta();
 
     render();
   };
@@ -648,6 +650,15 @@ function convert(s, l=100) {
                 },
               },
               {
+                opcode: "vector3S",
+                blockType: Scratch.BlockType.REPORTER,
+                text: "scalar vector3 [X]",
+                color1: "#5C80BC",
+                arguments: {
+                  X: { type: Scratch.ArgumentType.NUMBER, defaultValue: "3" },
+                },
+              },
+              {
                 opcode: "getAxis",
                 blockType: Scratch.BlockType.REPORTER,
                 text: "get [XYZ] of [V3]",
@@ -776,6 +787,53 @@ function convert(s, l=100) {
                   FILE: { type: "string", menu: "loadedModels" },
                 },
               },
+              "---",
+              {
+                opcode: "getAnimationsNames",
+                blockType: Scratch.BlockType.REPORTER,
+                text: "get model [NAME] animation [A]",
+                color1: "#5FAD56",
+                arguments: {
+                  NAME: { type: "string", defaultValue: "star destroyer" },
+                  A: { type: "number", defaultValue: 1 },
+                },
+              },
+              {
+                opcode: "actAnimation",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "for model [NAME] [ACTION] animation [ANIMATION]",
+                color1: "#5FAD56",
+                arguments: {
+                  NAME: { type: "string", defaultValue: "star destroyer" },
+                  ANIMATION: { type: "string", defaultValue: "shoot" },
+                  ACTION: { type: "string", menu: "animationActions", defaultValue: "play" },
+                },
+              },
+              {
+                opcode: "setAnimation",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "for model [NAME] set animation [ANIMATION] [PROPERTY] to [VALUE]",
+                color1: "#5FAD56",
+                arguments: {
+                  NAME: { type: "string", defaultValue: "star destroyer" },
+                  ANIMATION: { type: "string", defaultValue: "shoot" },
+                  PROPERTY: { type: "string", menu: "animationState" },
+                  VALUE: { type: "number", defaultValue: 1 },
+                },
+              },
+              {
+                opcode: "fadeAnimation",
+                blockType: Scratch.BlockType.COMMAND,
+                text: "for model [NAME] animation [ANIMATION] [FADE] in [S] seconds",
+                color1: "#5FAD56",
+                arguments: {
+                  NAME: { type: "string", defaultValue: "star destroyer" },
+                  ANIMATION: { type: "string", defaultValue: "shoot" },
+                  FADE: { type: "string", menu: "animationFades" },
+                  S: { type: "number", defaultValue: 1 },
+                },
+              },
+              
 
               "---",
 
@@ -1704,6 +1762,21 @@ function convert(s, l=100) {
                 { text: Scratch.translate("Normal"), value: "normal" },
                 { text: Scratch.translate("InstancedMesh: Instance Id"), value: "instanceId" },
               ]},
+              animationActions: {items: [
+                { text: Scratch.translate("Play/Resume"), value: "play" },
+                { text: Scratch.translate("Reset"), value: "reset" },
+                { text: Scratch.translate("Stop"), value: "stop" },
+                { text: Scratch.translate("Pause"), value: "paused" },
+              ]},
+              animationState: {items: [
+                { text: Scratch.translate("Repetitions"), value: "repetitions" },
+                { text: Scratch.translate("Time Scale/Speed"), value: "timeScale" },
+                { text: Scratch.translate("Weight/Scale"), value: "weight" },
+              ]},
+              animationFades: {items: [
+                { text: Scratch.translate("Fade Out"), value: "fadeOut" },
+                { text: Scratch.translate("Fade In"), value: "fadeIn" },
+              ]},
               loadedModels: {items: () => {
                 const s = runtime.extensionStorage[extensionID] || null;
                 if (!s) {initStorage(); return [["waiting to load..."]];}
@@ -1820,6 +1893,7 @@ function convert(s, l=100) {
 
         vector2(args) {return `[${args.X}, ${args.Y}]`;}
         vector3(args) {return `[${args.X}, ${args.Y}, ${args.Z}]`;}
+        vector3S(args) {return `[${args.X}, ${args.X}, ${args.X}]`;}
 
         renderer(args) {
           const keys = args.PROPERTY.split(".");
@@ -2418,7 +2492,7 @@ function convert(s, l=100) {
           } else { oc.disconnect(); oc.reset(); }
         }
 
-        async loadModel() {
+        async loadModel() { //not bad, but can't read animations since the file has not been loaded. mmmh, should use DRACOLoader to compress & read files?
           const file = await requestFile(".glb,.gltf,.obj,.fbx");
           runtime.extensionStorage[extensionID].models[file.name] = file.url;
           console.log(`File ${file.name} has loaded and has been added!`);
@@ -2434,7 +2508,6 @@ function convert(s, l=100) {
 
           const response = await fetch(url);
           const file = await response.arrayBuffer();
-          console.log(url, response, file);
 
           const group = new THREE.Group();
           group.name = args.NAME;
@@ -2466,16 +2539,67 @@ function convert(s, l=100) {
 
           function add(obj) {
             const model = obj.scene || obj;
-            console.log(obj);
             group.add(model);
             group.traverse(o=>{o.castShadow = true; o.receiveShadow = true;});
             //material customization support?
+
+            const mixer = new THREE.AnimationMixer(model);
+            assets.animations.set(args.NAME, mixer);
+            const animations = {};
+            obj.animations.forEach(a => {
+              const act = mixer.clipAction(a);
+              animations[a.name] = act;
+            });
+
+            group.userData.animations = animations; 
           }
 
         }
         removeModel(args) {
           confirm(`Are you sure you want to delete ${args.FILE}?`) ? delete runtime.extensionStorage[extensionID].models[args.FILE] : null;
           vm.extensionManager.refreshBlocks();
+        }
+
+        getAnimationsNames(args) {
+          const model = assets.objects.get(args.NAME);
+          if (!model) {console.warn(`No object-model named ${args.NAME}`); return;}
+
+          const animations = model.userData.animations;
+
+          return Object.keys(animations)[args.A-1];
+        }
+        actAnimation(args) {
+          const model = assets.objects.get(args.NAME);
+          if (!model) {console.warn(`No object-model named ${args.NAME}`); return;}
+          const animation = model.userData.animations[args.ANIMATION];
+          if (!animation) {console.warn(`No animation named ${args.ANIMATION} in model-object ${args.NAME}`); return;}
+
+          switch (args.ACTION) {
+            case "paused":
+              animation.paused = true;
+              break;
+            default: 
+              animation.paused = false; //play or resume, if paused.
+              animation.enabled = true; //gets disabled with fade functions!
+              animation[args.ACTION]();
+          }
+        }
+        setAnimation(args) {
+          const model = assets.objects.get(args.NAME);
+          if (!model) {console.warn(`No object-model named ${args.NAME}`); return;}
+          const animation = model.userData.animations[args.ANIMATION];
+          if (!animation) {console.warn(`No animation named ${args.ANIMATION} in model-object ${args.NAME}`); return;}
+
+          animation[args.PROPERTY] = args.VALUE;
+        }
+        fadeAnimation(args) {
+          const model = assets.objects.get(args.NAME);
+          if (!model) {console.warn(`No object-model named ${args.NAME}`); return;}
+          const animation = model.userData.animations[args.ANIMATION];
+          if (!animation) {console.warn(`No animation named ${args.ANIMATION} in model-object ${args.NAME}`); return;}
+
+          animation.enabled = true;
+          animation[args.FADE](args.S);
         }
 
         createInstance(args) {
