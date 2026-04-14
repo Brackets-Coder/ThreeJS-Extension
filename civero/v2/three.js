@@ -786,18 +786,19 @@ function convert(s, l=100) {
                 arguments: {
                   FILE: { type: "string", menu: "loadedModels" },
                 },
-              },
-              "---",
+              },"---",
               {
-                opcode: "getAnimationsNames",
+                opcode: "getModelChild",
                 blockType: Scratch.BlockType.REPORTER,
-                text: "get model [NAME] animation [A]",
+                text: "get model [NAME] [THING] [A]",
                 color1: "#5FAD56",
                 arguments: {
                   NAME: { type: "string", defaultValue: "star destroyer" },
                   A: { type: "number", defaultValue: 1 },
+                  THING: { type: "string", menu: "modelThings" },
                 },
               },
+              "---",
               {
                 opcode: "actAnimation",
                 blockType: Scratch.BlockType.COMMAND,
@@ -1469,7 +1470,7 @@ function convert(s, l=100) {
 
                   {text: Scratch.translate("Perspective Camera"), value: "PerspectiveCamera"},
                   {text: Scratch.translate("Orthographic Camera"), value: "OrthographicCamera"},
-                  //{text: Scratch.translate("Cube Camera"), value: "CubeCamera"},
+                  {text: Scratch.translate("Cube Camera"), value: "CubeCamera"},
                 ]
               },
               meshProperties: { items: [
@@ -1718,6 +1719,7 @@ function convert(s, l=100) {
                 {text: Scratch.translate("materials"), value: "materials"},
                 {text: Scratch.translate("textures"), value: "textures"},
                 {text: Scratch.translate("audios"), value: "audios"},
+                {text: Scratch.translate("Render Targets"), value: "rT"},
               ]},
               stats: {items: [
                 {text: Scratch.translate("memory"), value: "memory"},
@@ -1794,6 +1796,12 @@ function convert(s, l=100) {
                 return Object.keys(m).map(x=>[x]);
               }},
               lists:  {items: "listsMenu" },
+              modelThings: {items: [
+                { text: Scratch.translate("animation"), value: "animations" },
+                { text: Scratch.translate("child object"), value: "children" },
+                { text: Scratch.translate("material"), value: "materials" },
+                { text: Scratch.translate("geometry"), value: "geometries" },
+              ]},
             },
 
           };
@@ -1824,10 +1832,16 @@ function convert(s, l=100) {
                 }
               );
               assets.geometries.forEach(
-                o => o.dispose()
+                o => {
+                  try {o.dispose();}
+                  catch (error) {console.warn(error);}
+                }
               );
               assets.materials.forEach(
-                o => o.dispose()
+                o => {
+                  try {o.dispose();}
+                  catch (error) {console.warn(error);}
+                }
               );
               assets.textures.forEach(
                 o => o.dispose()
@@ -1861,13 +1875,19 @@ function convert(s, l=100) {
               break;
             case "geometries":
               assets.geometries.forEach(
-                o => o.dispose()
+                o => {
+                  try {o.dispose();}
+                  catch (error) {console.warn(error);}
+                }
               );
               assets.geometries.clear();
               break;
             case "materials":
               assets.materials.forEach(
-                o => o.dispose()
+                o => {
+                  try {o.dispose();}
+                  catch (error) {console.warn(error);}
+                }
               );
               assets.materials.clear();
               break;
@@ -1878,7 +1898,16 @@ function convert(s, l=100) {
               assets.textures.clear();
               break;
             case "audios":
+              assets.audios.forEach(
+                o => o.dispose()
+              );
               assets.audios.clear();
+              break;
+            case "rT":
+              assets.renderTargets.forEach(
+                o => o.dispose()
+              );
+              assets.renderTargets.clear();
               break;
           }
 
@@ -2492,10 +2521,10 @@ function convert(s, l=100) {
           } else { oc.disconnect(); oc.reset(); }
         }
 
-        async loadModel() { //not bad, but can't read animations since the file has not been loaded. mmmh, should use DRACOLoader to compress & read files?
+        async loadModel() { //should use DRACOLoader to compress & read files?
           const file = await requestFile(".glb,.gltf,.obj,.fbx");
           runtime.extensionStorage[extensionID].models[file.name] = file.url;
-          console.log(`File ${file.name} has loaded and has been added!`);
+          console.log(`File ${file.name} has loaded correctly!`);
         }
         async addModel(args) {
           if (args.NAME == "scene") {console.warn(`Don't name objects "scene"!`); return;}
@@ -2540,8 +2569,6 @@ function convert(s, l=100) {
           function add(obj) {
             const model = obj.scene || obj;
             group.add(model);
-            group.traverse(o=>{o.castShadow = true; o.receiveShadow = true;});
-            //material customization support?
 
             const mixer = new THREE.AnimationMixer(model);
             assets.animations.set(args.NAME, mixer);
@@ -2551,13 +2578,52 @@ function convert(s, l=100) {
               animations[a.name] = act;
             });
 
-            group.userData.animations = animations; 
+            const children = {};
+            group.traverse(o => {
+              o.castShadow = true; 
+              o.receiveShadow = true;
+
+              const id = `${args.NAME}_${o.name || o.uuid}`;
+              children[id] = o;
+              assets.objects.set(id, o);
+            });
+            const materials = {};
+            group.traverse(o => {
+              o = o.material;
+              if (o) {
+                const id = `${args.NAME}_${o.name || o.uuid}`;
+                materials[id] = o;
+                assets.materials.set(id, o);
+              }
+            });
+            const geometries = {};
+            group.traverse(o => {
+              o = o.geometry;
+              if (o) {
+                const id = `${args.NAME}_${o.name || o.uuid}`;
+                geometries[id] = o;
+                assets.geometries.set(id, o);
+              }
+            });
+
+            group.userData.animations = animations;
+            group.userData.children = children;
+            group.userData.materials = materials;
+            group.userData.geometries = geometries;
           }
 
         }
         removeModel(args) {
           confirm(`Are you sure you want to delete ${args.FILE}?`) ? delete runtime.extensionStorage[extensionID].models[args.FILE] : null;
           vm.extensionManager.refreshBlocks();
+        }
+        getModelChild(args) {
+          const model = assets.objects.get(args.NAME);
+          if (!model) {console.warn(`No object-model named ${args.NAME}`); return;}
+
+          const thing = model.userData[args.THING];
+
+          return Object.keys(thing)[args.A-1];
         }
 
         getAnimationsNames(args) {
