@@ -1781,19 +1781,19 @@ function convert(s, l=100) {
               ]},
               loadedModels: {items: () => {
                 const s = runtime.extensionStorage[extensionID] || null;
-                if (!s) {initStorage(); return [["waiting to load..."]];}
+                if (!s) {initStorage(); return [["waiting to load...", "empty"]];}
                 const m = s.models;
                 if (!m) {s.models = {}; m = {};}
-                if (Object.keys(m).length == 0) return [["Load a model!"]];
-                return Object.keys(m).map(x=>[x]);
+                if (Object.keys(m).length == 0) return [["Load a model!", "empty"]];
+                return Object.keys(m).map(x=>[x, x]);
               }}, 
               loadedFonts: {items: () => {
                 const s = runtime.extensionStorage[extensionID] || null;
-                if (!s) {initStorage(); return [["waiting to load..."]];}
+                if (!s) {initStorage(); return [["waiting to load...", "empty"]];}
                 const m = s.fonts;
                 if (!m) {s.fonts = {}; m = {};}
-                if (Object.keys(m).length == 0) return [["Load a font!"]];
-                return Object.keys(m).map(x=>[x]);
+                if (Object.keys(m).length == 0) return [["Load a font!", "empty"]];
+                return Object.keys(m).map(x=>[x, x]);
               }},
               lists:  {items: "listsMenu" },
               modelThings: {items: [
@@ -2895,7 +2895,7 @@ SOFTWARE.
                                                   result.cssFontStyle = "normal";
                                               }
                                               
-                                              return toString(result);
+                                              return JSON.stringify(result);
           }
 
           runtime.extensionStorage[extensionID].fonts[file[0].name] = url;
