@@ -335,7 +335,7 @@ function convert(s, l=100) {
             color2: "#30323D",
             color3: "#606060",
             menuIconURI: "data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHdpZHRoPSIyMTQiIGhlaWdodD0iMjE0IiB2aWV3Qm94PSIwLDAsMjE0LDIxNCI+PGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTEzMywtNzMpIj48ZyBzdHJva2UtbWl0ZXJsaW1pdD0iMTAiPjxwYXRoIGQ9Ik0xMzMsMTgwYzAsLTU5LjA5NDQ3IDQ3LjkwNTUzLC0xMDcgMTA3LC0xMDdjNTkuMDk0NDcsMCAxMDcsNDcuOTA1NTMgMTA3LDEwN2MwLDU5LjA5NDQ3IC00Ny45MDU1MywxMDcgLTEwNywxMDdjLTU5LjA5NDQ3LDAgLTEwNywtNDcuOTA1NTMgLTEwNywtMTA3eiIgZmlsbD0iIzE5MTkxOSIgZmlsbC1ydWxlPSJub256ZXJvIiBzdHJva2U9IiM1Y2Q0OTgiIHN0cm9rZS13aWR0aD0iMCIgc3Ryb2tlLWxpbmVqb2luPSJtaXRlciIvPjxnIGZpbGw9Im5vbmUiIGZpbGwtcnVsZT0iZXZlbm9kZCIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0yMTEuNTk4LDI4MC40N2wtNDMuMjEzLC0xNzQuOTRsMTczLjIzLDQ5Ljg3NHoiLz48cGF0aCBkPSJNMjU0Ljk2OCwxMzAuNDcybDIxLjU5MSw4Ny40OTZsLTg2LjU2NywtMjQuOTQ1eiIvPjxwYXRoIGQ9Ik0yMzMuNDg4LDIwNC44OWwtMTAuNzI0LC00My40NjVsNDMuMDA4LDEyLjM0NnoiLz48cGF0aCBkPSJNMjEyLjAzNiwxMTguMDEzbDEwLjcyNCw0My40NjVsLTQzLjAwOCwtMTIuMzQ2eiIvPjxwYXRoIGQ9Ik0yOTguMDQ4LDE0Mi43OWwxMC43MjQsNDMuNDY1bC00My4wMDgsLTEyLjM0NnoiLz48cGF0aCBkPSJNMjMzLjQ5MywyMDQuOTJsMTAuNzI0LDQzLjQ2NWwtNDMuMDA4LC0xMi4zNDZ6Ii8+PC9nPjwvZz48L2c+PC9zdmc+",
-            docsURI: "https://github.com/Brackets-Coder/ThreeJS-Extension",
+            docsURI: "https://civ3ro.github.io/Three.js-Extension-Documentation/",
             blocks: [
 
               {
@@ -1291,6 +1291,15 @@ function convert(s, l=100) {
                 arguments: {
                   A: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
                   B: { type: Scratch.ArgumentType.STRING, defaultValue: "ground"}
+                }
+              },
+              {
+                opcode: "touchingPoint",
+                blockType: Scratch.BlockType.BOOLEAN,
+                text: "is [V] inside [NAME]?",
+                arguments: {
+                  NAME: { type: Scratch.ArgumentType.STRING, defaultValue: "object" },
+                  V: { type: Scratch.ArgumentType.STRING, defaultValue: "[0,0,0]"}
                 }
               },
 
@@ -2513,6 +2522,15 @@ function convert(s, l=100) {
 
           return a.intersectsBox(b);
         }
+        touchingPoint(args) {
+          const obj = assets.objects.get(args.NAME);
+          if (!obj) {console.warn(`No object named ${args.A}`); return;}
+
+          const point = dummyVector3.fromArray(convert(args.V));
+          const box = new THREE.Box3().setFromObject(obj);
+
+          return box.containsPoint(point);
+        }
 
         orbitControls(args) {
           const oc = assets.addons.get("orbitControls");
@@ -2521,7 +2539,7 @@ function convert(s, l=100) {
           } else { oc.disconnect(); oc.reset(); }
         }
 
-        async loadModel() { //should use DRACOLoader to compress & read files?
+        async loadModel() {
           const file = await requestFile(".glb,.gltf,.obj,.fbx");
           runtime.extensionStorage[extensionID].models[file.name] = file.url;
           console.log(`File ${file.name} has loaded correctly!`);
@@ -2988,6 +3006,7 @@ SOFTWARE.
           d3.applyEuler(e);
 
           storedRaycast = new THREE.Raycaster();
+          storedRaycast.camera = camera;
           storedRaycast.set(v3, d3);
         }
         raycastCamera(args) {
