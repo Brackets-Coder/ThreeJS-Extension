@@ -1527,6 +1527,7 @@
                 { text: Scratch.translate("Cast Shadow"), value: "castShadow" },
                 { text: Scratch.translate("Receive Shadow"), value: "receiveShadow" },
                 { text: Scratch.translate("Visible"), value: "visible" },
+                { text: Scratch.translate("Frustum Culled"), value: "frustumCulled" },
               ]},
               cameraProperties: { items: [
                 { text: Scratch.translate("Fov"), value: "fov" },
