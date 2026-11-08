@@ -1520,6 +1520,7 @@ function convert(s, l=100) {
                 { text: Scratch.translate("Texture Points [UV]"), value: "uv" },
                 { text: Scratch.translate("Face Points (Normals) [XYZ]"), value: "normal" },
                 { text: Scratch.translate("Vertex Colors [RGB]"), value: "color" },
+                { text: Scratch.translate("Indices"), value: "index" },
               ]},
               materialType: { items: [
                 {text: Scratch.translate("Mesh Basic"), value: "MeshBasicMaterial"},
@@ -2275,9 +2276,13 @@ function convert(s, l=100) {
           const geometry = assets.geometries.get(args.NAME);
           if (!geometry) {console.warn(`No geometry named ${args.NAME}`); return;}
 
-          let data, dataLength;
-          data = JSON.parse(args.DATA); //should avoid parse, but for geometries (updated very little in theory) it shouldnt be a problem right?
+          let dataLength;
 
+          if (args.PROPERTY == "index") {
+            geometry.setIndex(args.DATA);
+            geometry.index.needsUpdate = true;
+            return;
+          }
           switch (args.PROPERTY) {
             case "uv":
               dataLength = 2;
@@ -2285,7 +2290,7 @@ function convert(s, l=100) {
             default:
               dataLength = 3;
           }
-          geometry.setAttribute(args.PROPERTY, new THREE.BufferAttribute(new Float32Array(data), dataLength));
+          geometry.setAttribute(args.PROPERTY, new THREE.BufferAttribute(new Float32Array(args.DATA), dataLength));
 
           if (args.PROPERTY == "position") geometry.computeVertexNormals();
         }
@@ -2293,17 +2298,9 @@ function convert(s, l=100) {
           const geometry = assets.geometries.get(args.NAME);
           if (!geometry) {console.warn(`No geometry named ${args.NAME}`); return;}
 
-          let a = geometry.getAttribute(args.PROPERTY);
+            let a = args.PROPERTY == "index" ? geometry.index :  geometry.getAttribute(args.PROPERTY);
           if (a) a=a.array; else return null;
-          /* for custom output [0,0,0] [0,0,1] [1,0,1]
-          const result = [];
-          for (let i = 0; i < a.length; i += 3) {
-              result.push([a[i],a[i+1],a[i+2]]);
-          }
-
-          return toString(result).replaceAll("],", "] ").slice(1,-1);
-          */
-         return toString(Object.values(a));
+          return JSON.stringify((Object.values(a)));
         }
 
         createMaterial(args) {
